@@ -28,6 +28,10 @@ class CueAlignmentHandler : public MediaHandler {
   explicit CueAlignmentHandler(SyncPointQueue* sync_points);
   ~CueAlignmentHandler() = default;
 
+  /// Add a cue event to the queue.
+  /// @param cue_event The cue event to add.
+  void OnCueEvent(std::shared_ptr<CueEvent> cue_event) override;
+
  private:
   CueAlignmentHandler(const CueAlignmentHandler&) = delete;
   CueAlignmentHandler& operator=(const CueAlignmentHandler&) = delete;
@@ -85,6 +89,9 @@ class CueAlignmentHandler : public MediaHandler {
   // event. If all streams get to the hint and there are no video streams, the
   // thread will block until |sync_points_| gives back a promoted cue event.
   double hint_;
+
+  // The last PTS value seen. This is used to ensure that the PTS values are
+  double last_pts_;
 };
 
 }  // namespace media

@@ -7,6 +7,7 @@
 #include <packager/media/base/media_handler.h>
 
 #include <packager/macros/status.h>
+#include <packager/macros/compiler.h>
 
 namespace shaka {
 namespace media {
@@ -20,9 +21,7 @@ std::string StreamDataTypeToString(StreamDataType type) {
     case StreamDataType::kTextSample:
       return "text sample";
     case StreamDataType::kSegmentInfo:
-      return "segment info";
-    case StreamDataType::kScte35Event:
-      return "scte35 event";
+      return "segment info";    
     case StreamDataType::kCueEvent:
       return "cue event";
     case StreamDataType::kUnknown:
@@ -85,6 +84,10 @@ Status MediaHandler::OnFlushRequest(size_t input_stream_index) {
   // to the input stream index, which is true for most handlers.
   const size_t output_stream_index = input_stream_index;
   return FlushDownstream(output_stream_index);
+}
+
+void MediaHandler::OnCueEvent(std::shared_ptr<CueEvent> cue_event) {
+  UNUSED(cue_event);
 }
 
 bool MediaHandler::ValidateOutputStreamIndex(size_t stream_index) const {

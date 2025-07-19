@@ -95,9 +95,11 @@ void CombinedMuxerListener::OnKeyFrame(int64_t timestamp,
 }
 
 void CombinedMuxerListener::OnCueEvent(int64_t timestamp,
+                                       double break_duration,
+                                       bool out_of_network,
                                        const std::string& cue_data) {
   for (auto& listener : muxer_listeners_) {
-    listener->OnCueEvent(timestamp, cue_data);
+    listener->OnCueEvent(timestamp, break_duration, out_of_network, cue_data);
   }
 }
 

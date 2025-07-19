@@ -14,6 +14,7 @@
 
 #include <packager/macros/classes.h>
 #include <packager/media/base/container_names.h>
+#include <packager/media/base/media_handler.h>
 
 namespace shaka {
 namespace media {
@@ -66,7 +67,7 @@ class MediaParser {
   virtual void Init(const InitCB& init_cb,
                     const NewMediaSampleCB& new_media_sample_cb,
                     const NewTextSampleCB& new_text_sample_cb,
-                    KeySource* decryption_key_source) = 0;
+                    KeySource* decryption_key_source) = 0;     
 
   /// Flush data currently in the parser and put the parser in a state where it
   /// can receive data for a new seek point.

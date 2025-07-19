@@ -33,12 +33,15 @@ struct KeyFrameEvent {
 // This stores data passed into OnCueEvent() for VOD.
 struct CueEventInfo {
   int64_t timestamp;
+  double break_duration;
+  bool out_of_network;
 };
 
 enum class EventInfoType {
   kSegment,
   kKeyFrame,
   kCue,
+  kScte35Event,
 };
 
 // This stores data for lazy event callback for VOD.

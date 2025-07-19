@@ -19,9 +19,17 @@ namespace media {
 SyncPointQueue::SyncPointQueue(const AdCueGeneratorParams& params) {
   for (const Cuepoint& point : params.cue_points) {
     std::shared_ptr<CueEvent> event = std::make_shared<CueEvent>();
+    event->type = point.out_of_network ? CueEventType::kCueOut
+                                        : CueEventType::kCueIn;
     event->time_in_seconds = point.start_time_in_seconds;
+    event->break_duration = point.duration_in_seconds;
     unpromoted_[point.start_time_in_seconds] = std::move(event);
   }
+}
+
+void SyncPointQueue::AddCueEvent(std::shared_ptr<CueEvent> cue_event) {
+  absl::MutexLock lock(&mutex_);
+  unpromoted_[cue_event->time_in_seconds] = cue_event;  
 }
 
 void SyncPointQueue::AddThread() {

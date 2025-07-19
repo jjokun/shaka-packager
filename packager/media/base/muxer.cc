@@ -85,6 +85,8 @@ Status Muxer::Process(std::unique_ptr<StreamData> stream_data) {
         const int64_t scaled_time =
             static_cast<int64_t>(time_in_seconds * time_scale);
         muxer_listener_->OnCueEvent(scaled_time,
+                                    stream_data->cue_event->break_duration,
+                                    stream_data->cue_event->out_of_network,
                                     stream_data->cue_event->cue_data);
 
         // Finalize and re-initialize Muxer to generate different content files.
@@ -94,6 +96,7 @@ Status Muxer::Process(std::unique_ptr<StreamData> stream_data) {
         }
       }
       break;
+
     default:
       VLOG(3) << "Stream data type "
               << static_cast<int>(stream_data->stream_data_type) << " ignored.";

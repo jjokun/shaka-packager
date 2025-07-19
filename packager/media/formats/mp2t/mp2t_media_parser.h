@@ -17,6 +17,7 @@
 #include <packager/media/base/stream_info.h>
 #include <packager/media/formats/mp2t/ts_audio_type.h>
 #include <packager/media/formats/mp2t/ts_stream_type.h>
+#include <packager/media/chunking/cue_alignment_handler.h>
 
 namespace shaka {
 namespace media {
@@ -38,6 +39,7 @@ struct PesMetadata {
 class Mp2tMediaParser : public MediaParser {
  public:
   Mp2tMediaParser();
+  Mp2tMediaParser(std::shared_ptr<MediaHandler> cue_alignment_handler);
   ~Mp2tMediaParser() override;
 
   /// @name MediaParser implementation overrides.
@@ -81,6 +83,8 @@ class Mp2tMediaParser : public MediaParser {
                          std::shared_ptr<MediaSample> new_sample);
   void OnEmitTextSample(uint32_t pes_pid,
                         std::shared_ptr<TextSample> new_sample);
+  void OnNewCueEvent(uint32_t pes_pid,
+                    std::shared_ptr<CueEvent> cue_event);
 
   // Invoke the initialization callback if needed.
   bool FinishInitializationIfNeeded();
@@ -91,12 +95,13 @@ class Mp2tMediaParser : public MediaParser {
   /// doubling. Default value is false.
   void set_sbr_in_mime_type(bool sbr_in_mimetype) {
     sbr_in_mimetype_ = sbr_in_mimetype;
-  }
+  }  
 
   // List of callbacks.
   InitCB init_cb_;
   NewMediaSampleCB new_media_sample_cb_;
   NewTextSampleCB new_text_sample_cb_;
+  std::shared_ptr<MediaHandler> cue_alignment_handler_;
 
   bool sbr_in_mimetype_;
 

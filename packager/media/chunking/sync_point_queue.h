@@ -4,6 +4,9 @@
 // license that can be found in the LICENSE file or at
 // https://developers.google.com/open-source/licenses/bsd
 
+#ifndef PACKAGER_MEDIA_CHUNKING_SYNC_POINT_QUEUE_H_
+#define PACKAGER_MEDIA_CHUNKING_SYNC_POINT_QUEUE_H_
+
 #include <map>
 #include <memory>
 
@@ -52,6 +55,10 @@ class SyncPointQueue {
   ///         in undefined behavior.
   bool HasMore(double hint_in_seconds) const;
 
+  /// Add a cue event to the queue.
+  /// @param cue_event The cue event to add.
+  void AddCueEvent(std::shared_ptr<CueEvent> cue_event);
+
  private:
   SyncPointQueue(const SyncPointQueue&) = delete;
   SyncPointQueue& operator=(const SyncPointQueue&) = delete;
@@ -72,3 +79,5 @@ class SyncPointQueue {
 
 }  // namespace media
 }  // namespace shaka
+
+#endif  // PACKAGER_MEDIA_CHUNKING_SYNC_POINT_QUEUE_H_

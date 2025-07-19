@@ -11,6 +11,7 @@
 
 #include <packager/macros/logging.h>
 #include <packager/media/base/media_sample.h>
+#include <packager/media/base/muxer.h>
 #include <packager/media/base/stream_info.h>
 #include <packager/media/base/text_sample.h>
 #include <packager/media/formats/mp2t/es_parser.h>
@@ -27,6 +28,7 @@
 #include <packager/media/formats/mp2t/ts_section_pes.h>
 #include <packager/media/formats/mp2t/ts_section_pmt.h>
 #include <packager/media/formats/mp2t/ts_stream_type.h>
+#include <packager/media/formats/mp2t/scte35_section_parser.h>
 
 namespace shaka {
 namespace media {
@@ -40,6 +42,7 @@ class PidState {
     kPidAudioPes,
     kPidVideoPes,
     kPidTextPes,
+    kPidScte35Pes,
   };
 
   PidState(int pid,
@@ -78,6 +81,7 @@ class PidState {
 
   std::deque<std::shared_ptr<MediaSample>> media_sample_queue_;
   std::deque<std::shared_ptr<TextSample>> text_sample_queue_;
+  std::deque<std::shared_ptr<CueEvent>> cue_event_queue_;
 
   bool enable_;
   int continuity_counter_;
@@ -155,13 +159,20 @@ void PidState::ResetState() {
 
 Mp2tMediaParser::Mp2tMediaParser()
     : sbr_in_mimetype_(false),
-      is_initialized_(false) {
+      is_initialized_(false){
+}
+
+Mp2tMediaParser::Mp2tMediaParser(std::shared_ptr<MediaHandler> cue_alignment_handler)
+    : sbr_in_mimetype_(false),
+      is_initialized_(false),
+      cue_alignment_handler_(cue_alignment_handler) {
+  DCHECK(cue_alignment_handler_ != nullptr);
 }
 
 Mp2tMediaParser::~Mp2tMediaParser() {}
 
 void Mp2tMediaParser::Init(const InitCB& init_cb,
-                           const NewMediaSampleCB& new_media_sample_cb,
+                           const NewMediaSampleCB& new_media_sample_cb,                           
                            const NewTextSampleCB& new_text_sample_cb,
                            KeySource* decryption_key_source) {
   DCHECK(!is_initialized_);
@@ -303,6 +314,7 @@ void Mp2tMediaParser::RegisterPes(int pmt_pid,
 
   // Create a stream parser corresponding to the stream type.
   PidState::PidType pid_type = PidState::kPidVideoPes;
+  std::unique_ptr<TsSection> section_parser;
   std::unique_ptr<EsParser> es_parser;
   auto on_new_stream = std::bind(&Mp2tMediaParser::OnNewStreamInfo, this,
                                  pes_pid, std::placeholders::_1);
@@ -310,6 +322,8 @@ void Mp2tMediaParser::RegisterPes(int pmt_pid,
                                  pes_pid, std::placeholders::_1);
   auto on_emit_text = std::bind(&Mp2tMediaParser::OnEmitTextSample, this,
                                 pes_pid, std::placeholders::_1);
+  auto on_cue_info = std::bind(&Mp2tMediaParser::OnNewCueEvent, this,
+                                    pes_pid, std::placeholders::_1);
   switch (stream_type) {
     case TsStreamType::kAvc:
       es_parser.reset(new EsParserH264(pes_pid, on_new_stream, on_emit_media));
@@ -335,7 +349,12 @@ void Mp2tMediaParser::RegisterPes(int pmt_pid,
                                            descriptor, descriptor_length));
       pid_type = PidState::kPidTextPes;
       break;
-
+    case TsStreamType::kScte35: 
+      // SCTE-35은 PSI(섹션) 파서로 등록
+      section_parser = std::make_unique<Scte35SectionParser>(on_cue_info);
+      pid_type = PidState::kPidScte35Pes;
+      break;
+    
     default: {
       auto type = static_cast<int>(stream_type);
       DCHECK(type <= 0xff);
@@ -349,8 +368,14 @@ void Mp2tMediaParser::RegisterPes(int pmt_pid,
 
   // Create the PES state here.
   DVLOG(1) << "Create a new PES state";
-  std::unique_ptr<TsSection> pes_section_parser(
-      new TsSectionPes(std::move(es_parser)));
+  std::unique_ptr<TsSection> pes_section_parser;
+  if (es_parser != nullptr) {
+    // Create a PES section parser with the ES parser.
+    pes_section_parser.reset(new TsSectionPes(std::move(es_parser)));
+  } else if (section_parser != nullptr) {
+    // If the section parser is not null, it means we are dealing with SCTE-35.
+    pes_section_parser = std::move(section_parser);
+  }
   std::unique_ptr<PidState> pes_pid_state(
       new PidState(pes_pid, pid_type, std::move(pes_section_parser)));
   pes_pid_state->Enable();
@@ -464,6 +489,26 @@ void Mp2tMediaParser::OnEmitTextSample(uint32_t pes_pid,
     return;
   }
   pid_state->second->text_sample_queue_.push_back(std::move(new_sample));
+}
+
+void Mp2tMediaParser::OnNewCueEvent(uint32_t pes_pid,
+                                    std::shared_ptr<CueEvent> cue_event) {
+  DCHECK(cue_event);
+  DVLOG(LOG_LEVEL_ES) << "OnNewCueEvent: "
+                      << " pid=" << pes_pid
+                      << " cue_data=" << cue_event->cue_data;
+
+  // Add the cue event to the appropriate PID cue event queue.
+  auto pid_state = pids_.find(pes_pid);
+  if (pid_state == pids_.end()) {
+    LOG(ERROR) << "PID State for new SCTE-35 event not found (pid = "
+               << pes_pid << ").";
+    return;
+  }
+  // Add the cue event to the sync point queue if it exists.
+  if (cue_alignment_handler_) {
+    cue_alignment_handler_->OnCueEvent(cue_event);
+  }
 }
 
 bool Mp2tMediaParser::EmitRemainingSamples() {

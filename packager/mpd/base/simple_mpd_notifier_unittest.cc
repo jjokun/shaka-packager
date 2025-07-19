@@ -296,7 +296,7 @@ TEST_F(SimpleMpdNotifierTest, NotifyCueEvent) {
   EXPECT_CALL(*mock_adaptation_set2,
               CopyRepresentation(Ref(*mock_representation)))
       .WillOnce(Return(mock_representation2.get()));
-  EXPECT_TRUE(notifier.NotifyCueEvent(container_id, kCueEventTimestamp));
+  EXPECT_TRUE(notifier.NotifyCueEvent(container_id, kCueEventTimestamp, 1.0, false));
 }
 
 TEST_F(SimpleMpdNotifierTest,

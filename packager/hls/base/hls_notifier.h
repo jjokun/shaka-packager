@@ -78,8 +78,13 @@ class HlsNotifier {
 
   /// @param stream_id is the value set by NotifyNewStream().
   /// @param timestamp is the timestamp of the CueEvent.
+  /// @param break_duration is the duration of the break in seconds.
+  /// @param out_of_network is the out of network indicator.
   /// @return true on success, false otherwise.
-  virtual bool NotifyCueEvent(uint32_t stream_id, int64_t timestamp) = 0;
+  virtual bool NotifyCueEvent(uint32_t stream_id, 
+                              int64_t timestamp,
+                              double break_duration,
+                              bool out_of_network) = 0;
 
   /// @param stream_id is the value set by NotifyNewStream().
   /// @param key_id is the key ID for the stream.

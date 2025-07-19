@@ -20,6 +20,7 @@
 #include <packager/macros/logging.h>
 #include <packager/media/base/decryptor_source.h>
 #include <packager/media/base/key_source.h>
+#include <packager/media/base/media_handler.h>
 #include <packager/media/base/media_sample.h>
 #include <packager/media/base/stream_info.h>
 #include <packager/media/formats/mp2t/mp2t_media_parser.h>
@@ -27,6 +28,7 @@
 #include <packager/media/formats/webm/webm_media_parser.h>
 #include <packager/media/formats/webvtt/webvtt_parser.h>
 #include <packager/media/formats/wvm/wvm_media_parser.h>
+#include <packager/media/chunking/cue_alignment_handler.h>
 
 namespace {
 // 65KB, sufficient to determine the container and likely all init data.
@@ -78,8 +80,11 @@ bool GetStreamIndex(const std::string& stream_label, size_t* stream_index) {
 namespace shaka {
 namespace media {
 
-Demuxer::Demuxer(const std::string& file_name)
-    : file_name_(file_name), buffer_(new uint8_t[kBufSize]) {}
+Demuxer::Demuxer(const std::string& file_name, std::shared_ptr<MediaHandler> cue_alignment_handler)
+    : file_name_(file_name),
+      cue_alignment_handler_(cue_alignment_handler),
+      buffer_(new uint8_t[kBufSize]) {
+}
 
 Demuxer::~Demuxer() {
   if (media_file_)
@@ -190,9 +195,9 @@ Status Demuxer::InitializeParser() {
     case CONTAINER_MOV:
       parser_.reset(new mp4::MP4MediaParser());
       break;
-    case CONTAINER_MPEG2TS:
-      parser_.reset(new mp2t::Mp2tMediaParser());
-      break;
+          case CONTAINER_MPEG2TS:
+        parser_.reset(new mp2t::Mp2tMediaParser(cue_alignment_handler_));
+        break;
       // Widevine classic (WVM) is derived from MPEG2PS. We do not support
       // non-WVM MPEG2PS file, thus we do not differentiate between the two.
       // Every MPEG2PS file is assumed to be WVM file. If it turns out not the

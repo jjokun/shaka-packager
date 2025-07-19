@@ -372,7 +372,10 @@ TEST_F(SimpleHlsNotifierTest, NotifyCueEvent) {
 
   EXPECT_CALL(*mock_media_playlist, AddPlacementOpportunity());
   const int64_t kCueEventTimestamp = 12345;
-  EXPECT_TRUE(notifier.NotifyCueEvent(stream_id, kCueEventTimestamp));
+  const double kBreakDuration = 10.0;
+  const bool kOutOfNetwork = false;
+  EXPECT_TRUE(notifier.NotifyCueEvent(stream_id, kCueEventTimestamp,
+                                       kBreakDuration, kOutOfNetwork));
 }
 
 struct RebaseUrlTestData {

@@ -12,6 +12,7 @@
 #include <absl/log/log.h>
 
 #include <packager/macros/compiler.h>
+#include <packager/macros/logging.h>
 #include <packager/media/base/audio_stream_info.h>
 #include <packager/media/base/protection_system_specific_info.h>
 #include <packager/media/base/video_stream_info.h>
@@ -190,6 +191,8 @@ void MpdNotifyMuxerListener::OnMediaEnd(const MediaRanges& media_ranges,
         break;
       case EventInfoType::kCue:
         mpd_notifier_->NotifyCueEvent(notification_id_.value(),
+                                      event_info.cue_event_info.break_duration,
+                                      event_info.cue_event_info.out_of_network,
                                       event_info.cue_event_info.timestamp);
         break;
     }
@@ -235,10 +238,15 @@ void MpdNotifyMuxerListener::OnKeyFrame(int64_t timestamp,
 }
 
 void MpdNotifyMuxerListener::OnCueEvent(int64_t timestamp,
+                                        double break_duration,
+                                        bool out_of_network,
                                         const std::string& cue_data) {
   UNUSED(cue_data);
   if (mpd_notifier_->dash_profile() == DashProfile::kLive) {
-    mpd_notifier_->NotifyCueEvent(notification_id_.value(), timestamp);
+    mpd_notifier_->NotifyCueEvent(notification_id_.value(), 
+                                  timestamp,
+                                  break_duration, 
+                                  out_of_network);
   } else {
     EventInfo event_info;
     event_info.type = EventInfoType::kCue;

@@ -27,16 +27,40 @@ class KeySource;
 class MediaParser;
 class MediaSample;
 class StreamInfo;
+class Scte35SpliceInfo;
+class CueAlignmentHandler;
 
 /// Demuxer is responsible for extracting elementary stream samples from a
 /// media file, e.g. an ISO BMFF file.
+/// Demuxer is an OriginHandler, which means it is at the head of a pipeline
+/// (chain of handlers). It reads from a file and pushes the samples to
+/// downstream handlers.
+///
+/// Demuxer supports multiple output streams. Each output stream is identified
+/// by a stream label. The stream label can be:
+///   - 'audio': the first audio stream
+///   - 'video': the first video stream
+///   - stream number (zero based): the stream at the specified index
+///
+/// Demuxer supports multiple input formats:
+///   - ISO BMFF (MP4)
+///   - WebM
+///   - MPEG2-TS
+///   - WVM (Widevine Classic)
+///   - WebVTT
+///
+/// Demuxer supports media decryption. If the input media is encrypted,
+/// a KeySource must be provided to decrypt the media.
+
 class Demuxer : public OriginHandler {
  public:
   /// @param file_name specifies the input source. It uses prefix matching to
   ///        create a proper File object. The user can extend File to support
   ///        a custom File object with its own prefix.
-  explicit Demuxer(const std::string& file_name);
-  ~Demuxer();
+  /// @param cue_alignment_handler optional CueAlignmentHandler for managing cue events
+  explicit Demuxer(const std::string& file_name, 
+                   std::shared_ptr<MediaHandler> cue_alignment_handler = nullptr);
+  ~Demuxer() override;
 
   /// Set the KeySource for media decryption.
   /// @param key_source points to the source of decryption keys. The key
@@ -137,6 +161,7 @@ class Demuxer : public OriginHandler {
   // Queued samples received in NewSampleEvent() before ParserInitEvent().
   std::deque<QueuedSample<MediaSample>> queued_media_samples_;
   std::deque<QueuedSample<TextSample>> queued_text_samples_;
+  std::deque<QueuedSample<CueEvent>> queued_cue_events_;
   std::unique_ptr<MediaParser> parser_;
   // TrackId -> StreamIndex map.
   std::map<uint32_t, size_t> track_id_to_stream_index_map_;
@@ -154,6 +179,8 @@ class Demuxer : public OriginHandler {
   Status init_event_status_;
   // Explicitly defined input format, for avoiding autodetection.
   std::string input_format_;
+  // CueAlignmentHandler for managing cue events
+  std::shared_ptr<MediaHandler> cue_alignment_handler_;
 };
 
 }  // namespace media

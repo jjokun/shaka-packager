@@ -417,7 +417,10 @@ bool SimpleHlsNotifier::NotifyKeyFrame(uint32_t stream_id,
   return true;
 }
 
-bool SimpleHlsNotifier::NotifyCueEvent(uint32_t stream_id, int64_t timestamp) {
+bool SimpleHlsNotifier::NotifyCueEvent(uint32_t stream_id, 
+                                       int64_t timestamp,
+                                       double break_duration,
+                                       bool out_of_network) {
   absl::MutexLock lock(&lock_);
   auto stream_iterator = stream_map_.find(stream_id);
   if (stream_iterator == stream_map_.end()) {
@@ -425,7 +428,10 @@ bool SimpleHlsNotifier::NotifyCueEvent(uint32_t stream_id, int64_t timestamp) {
     return false;
   }
   auto& media_playlist = stream_iterator->second->media_playlist;
-  media_playlist->AddPlacementOpportunity();
+  media_playlist->AddCueEvent(timestamp, 
+                              break_duration,
+                              out_of_network);
+  // media_playlist->AddPlacementOpportunity();
   return true;
 }
 
