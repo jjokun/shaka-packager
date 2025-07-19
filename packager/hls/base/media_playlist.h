@@ -32,6 +32,8 @@ class HlsEntry {
     kExtKey,
     kExtDiscontinuity,
     kExtPlacementOpportunity,
+    kExtCueOut,
+    kExtCueIn    
   };
   virtual ~HlsEntry();
 
@@ -168,6 +170,11 @@ class MediaPlaylist {
   /// Add #EXT-X-PLACEMENT-OPPORTUNITY for mid-roll ads. See
   /// https://support.google.com/dfp_premium/answer/7295798?hl=en.
   virtual void AddPlacementOpportunity();
+
+  // 광고 신호 태그 추가
+  virtual void AddCueEvent(uint32_t timestamp,
+                           double break_duration,
+                           bool out_of_network);
 
   /// Write the playlist to |file_path|.
   /// This does not close the file.
@@ -344,6 +351,7 @@ class EncryptionInfoEntry : public HlsEntry {
   const std::string key_format_;
   const std::string key_format_versions_;
 };
+
 
 }  // namespace hls
 }  // namespace shaka

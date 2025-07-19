@@ -54,7 +54,10 @@ class VodMediaInfoDumpMuxerListener : public MuxerListener {
   void OnKeyFrame(int64_t timestamp,
                   uint64_t start_byte_offset,
                   uint64_t size) override;
-  void OnCueEvent(int64_t timestamp, const std::string& cue_data) override;
+  void OnCueEvent(int64_t timestamp, 
+                  double break_duration,
+                  bool out_of_network,
+                  const std::string& cue_data) override;
   /// @}
 
   /// Write @a media_info to @a output_file_path in human readable format.

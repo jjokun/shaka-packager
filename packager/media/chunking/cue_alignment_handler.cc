@@ -87,6 +87,7 @@ Status CueAlignmentHandler::InitializeInternal() {
   // Get the first hint for the stream. Use a negative hint so that if there is
   // suppose to be a sync point at zero, we will still respect it.
   hint_ = sync_points_->GetHint(-1);
+  last_pts_ = -1.0;
 
   return Status::OK;
 }
@@ -186,6 +187,7 @@ Status CueAlignmentHandler::OnVideoSample(std::unique_ptr<StreamData> sample) {
 
   const double sample_time = TimeInSeconds(*stream.info, *sample);
   const bool is_key_frame = sample->media_sample->is_key_frame();
+  last_pts_ = sample_time;
 
   if (is_key_frame && sample_time >= hint_) {
     auto next_sync = sync_points_->PromoteAt(sample_time);
@@ -257,6 +259,23 @@ Status CueAlignmentHandler::OnSample(std::unique_ptr<StreamData> sample) {
 
   return is_video ? OnVideoSample(std::move(sample))
                   : OnNonVideoSample(std::move(sample));
+}
+
+// Add a cue event to the queue. And update the hint for all streams.
+// @param cue_event The cue event to add.
+void CueAlignmentHandler::OnCueEvent(std::shared_ptr<CueEvent> cue_event) {
+  if (cue_event->time_in_seconds < 0) {
+    if (last_pts_ < 0) {
+      LOG(ERROR) << "Cue event time cannot be negative: "
+                << cue_event->time_in_seconds;
+      return;
+    }
+    // If the cue event time is negative, we use the last PTS value to
+    cue_event->time_in_seconds = last_pts_;
+  }
+  sync_points_->AddCueEvent(cue_event);
+  // time_in_seconds is inclusive, so we subtract a small value to ensure that
+  hint_ = sync_points_->GetHint(cue_event->time_in_seconds - 0.001);
 }
 
 Status CueAlignmentHandler::UseNewSyncPoint(

@@ -277,6 +277,46 @@ std::string PlacementOpportunityEntry::ToString() {
   return "#EXT-X-PLACEMENT-OPPORTUNITY";
 }
 
+class CueOutEntry : public HlsEntry {
+ public:
+  CueOutEntry(double duration);
+  std::string ToString() override;
+
+ private:
+  CueOutEntry(const CueOutEntry&) = delete;
+  CueOutEntry& operator=(const CueOutEntry&) = delete;
+  double duration_ = 0.0;
+};
+
+CueOutEntry::CueOutEntry(double duration)
+      : HlsEntry(HlsEntry::EntryType::kExtCueOut), duration_(duration) {}
+
+std::string CueOutEntry::ToString() {
+    // If duration is less 0.0, it means this is a cue-out without duration.
+    if (duration_ > 0.0) {
+      return absl::StrFormat("#EXT-X-CUE-OUT:DURATION=%.3f", duration_); // Convert to seconds.
+    } else {
+      return "#EXT-X-CUE-OUT";
+    }
+  }
+
+class CueInEntry : public HlsEntry {
+ public:
+  CueInEntry();
+  std::string ToString() override;
+
+ private:
+  CueInEntry(const CueInEntry&) = delete;
+  CueInEntry& operator=(const CueInEntry&) = delete;
+};
+
+CueInEntry::CueInEntry()
+    : HlsEntry(HlsEntry::EntryType::kExtCueIn) {}
+
+std::string CueInEntry::ToString() {
+  return "#EXT-X-CUE-IN";
+}
+
 EncryptionInfoEntry::EncryptionInfoEntry(MediaPlaylist::EncryptionMethod method,
                                          const std::string& url,
                                          const std::string& key_id,
@@ -485,6 +525,18 @@ void MediaPlaylist::AddEncryptionInfo(MediaPlaylist::EncryptionMethod method,
 
 void MediaPlaylist::AddPlacementOpportunity() {
   entries_.emplace_back(new PlacementOpportunityEntry());
+}
+
+void MediaPlaylist::AddCueEvent(uint32_t timestamp,
+                                double break_duration,
+                                bool out_of_network) {
+  // If out_of_network is true, it means this is a
+  // CUE-OUT event, otherwise it is a CUE-IN event.
+  if (out_of_network) {
+    entries_.emplace_back(new CueOutEntry(break_duration));
+  } else {
+    entries_.emplace_back(new CueInEntry());
+  } 
 }
 
 bool MediaPlaylist::WriteToFile(const std::filesystem::path& file_path) {

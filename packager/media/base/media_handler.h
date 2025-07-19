@@ -25,22 +25,10 @@ enum class StreamDataType {
   kMediaSample,
   kTextSample,
   kSegmentInfo,
-  kScte35Event,
   kCueEvent,
 };
 
 std::string StreamDataTypeToString(StreamDataType type);
-
-// Scte35Event represents cuepoint markers in input streams. It will be used
-// to represent out of band cuepoint markers too.
-struct Scte35Event {
-  std::string id;
-  // Segmentation type id from SCTE35 segmentation descriptor.
-  int type = 0;
-  double start_time_in_seconds = 0;
-  double duration_in_seconds = 0;
-  std::string cue_data;
-};
 
 enum class CueEventType { kCueIn, kCueOut, kCuePoint };
 
@@ -49,6 +37,8 @@ enum class CueEventType { kCueIn, kCueOut, kCuePoint };
 struct CueEvent {
   CueEventType type = CueEventType::kCuePoint;
   double time_in_seconds;
+  double break_duration;
+  bool out_of_network;
   std::string cue_data;
 };
 
@@ -75,7 +65,6 @@ struct StreamData {
   std::shared_ptr<const MediaSample> media_sample;
   std::shared_ptr<const TextSample> text_sample;
   std::shared_ptr<const SegmentInfo> segment_info;
-  std::shared_ptr<const Scte35Event> scte35_event;
   std::shared_ptr<const CueEvent> cue_event;
 
   static std::unique_ptr<StreamData> FromStreamInfo(
@@ -115,16 +104,6 @@ struct StreamData {
     stream_data->stream_index = stream_index;
     stream_data->stream_data_type = StreamDataType::kSegmentInfo;
     stream_data->segment_info = std::move(segment_info);
-    return stream_data;
-  }
-
-  static std::unique_ptr<StreamData> FromScte35Event(
-      size_t stream_index,
-      std::shared_ptr<const Scte35Event> scte35_event) {
-    std::unique_ptr<StreamData> stream_data(new StreamData);
-    stream_data->stream_index = stream_index;
-    stream_data->stream_data_type = StreamDataType::kScte35Event;
-    stream_data->scte35_event = std::move(scte35_event);
     return stream_data;
   }
 
@@ -175,6 +154,8 @@ class MediaHandler {
   /// Validate if the handler is connected to its upstream handler.
   bool IsConnected() { return num_input_streams_ > 0; }
 
+  virtual void OnCueEvent(std::shared_ptr<CueEvent> cue_event);
+
   static Status Chain(const std::vector<std::shared_ptr<MediaHandler>>& list);
 
  protected:
@@ -190,6 +171,8 @@ class MediaHandler {
 
   /// Event handler for flush request at the specific input stream index.
   virtual Status OnFlushRequest(size_t input_stream_index);
+
+
 
   /// Validate if the stream at the specified index actually exists.
   virtual bool ValidateOutputStreamIndex(size_t stream_index) const;
@@ -229,14 +212,6 @@ class MediaHandler {
       std::shared_ptr<const SegmentInfo> segment_info) const {
     return Dispatch(
         StreamData::FromSegmentInfo(stream_index, std::move(segment_info)));
-  }
-
-  /// Dispatch the scte35 event to downstream handlers.
-  Status DispatchScte35Event(
-      size_t stream_index,
-      std::shared_ptr<const Scte35Event> scte35_event) const {
-    return Dispatch(
-        StreamData::FromScte35Event(stream_index, std::move(scte35_event)));
   }
 
   /// Dispatch the cue event to downstream handlers.

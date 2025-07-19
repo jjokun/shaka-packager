@@ -227,7 +227,9 @@ void HlsNotifyMuxerListener::OnMediaEnd(const MediaRanges& media_ranges,
           break;
         case EventInfoType::kCue:
           hls_notifier_->NotifyCueEvent(stream_id_.value(),
-                                        event_info.cue_event_info.timestamp);
+                                        event_info.cue_event_info.timestamp,
+                                        event_info.cue_event_info.break_duration,
+                                        event_info.cue_event_info.out_of_network);
           break;
       }
     }
@@ -280,15 +282,20 @@ void HlsNotifyMuxerListener::OnKeyFrame(int64_t timestamp,
 }
 
 void HlsNotifyMuxerListener::OnCueEvent(int64_t timestamp,
+                                        double break_duration,
+                                        bool out_of_network,
                                         const std::string& cue_data) {
   UNUSED(cue_data);
   if (!media_info_->has_segment_template()) {
     EventInfo event_info;
     event_info.type = EventInfoType::kCue;
-    event_info.cue_event_info = {timestamp};
+    event_info.cue_event_info = {timestamp, break_duration, out_of_network};
     event_info_.push_back(event_info);
   } else {
-    hls_notifier_->NotifyCueEvent(stream_id_.value(), timestamp);
+    hls_notifier_->NotifyCueEvent(stream_id_.value(), 
+                                  timestamp, 
+                                  break_duration,
+                                  out_of_network);
   }
 }
 

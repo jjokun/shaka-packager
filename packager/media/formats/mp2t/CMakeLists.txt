@@ -51,6 +51,8 @@ add_library(mp2t STATIC
   ts_section_pmt.h
   ts_section_psi.cc
   ts_section_psi.h
+  scte35_section_parser.cc
+  scte35_section_parser.h
   ts_segmenter.cc
   ts_segmenter.h
   ts_stream_type.h
@@ -62,6 +64,7 @@ target_link_libraries(mp2t
   absl::log
   dvb
   media_base
+  media_chunking
   media_codecs
   media_crypto
   hex_parser

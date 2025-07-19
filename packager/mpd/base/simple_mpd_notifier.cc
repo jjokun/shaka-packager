@@ -135,7 +135,9 @@ bool SimpleMpdNotifier::NotifyCompletedSegment(uint32_t container_id,
 }
 
 bool SimpleMpdNotifier::NotifyCueEvent(uint32_t container_id,
-                                       int64_t timestamp) {
+                                       int64_t timestamp,
+                                       double break_duration,
+                                       bool out_of_network) {
   absl::MutexLock lock(&lock_);
   auto it = representation_map_.find(container_id);
   if (it == representation_map_.end()) {

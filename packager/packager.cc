@@ -454,8 +454,9 @@ bool StreamInfoToTextMediaInfo(const StreamDescriptor& stream_descriptor,
 /// |new_demuxer| will be set and Status::OK will be returned.
 Status CreateDemuxer(const StreamDescriptor& stream,
                      const PackagingParams& packaging_params,
+                     std::shared_ptr<MediaHandler> cue_alignment_handler,
                      std::shared_ptr<Demuxer>* new_demuxer) {
-  std::shared_ptr<Demuxer> demuxer = std::make_shared<Demuxer>(stream.input);
+  std::shared_ptr<Demuxer> demuxer = std::make_shared<Demuxer>(stream.input, cue_alignment_handler);
   demuxer->set_dump_stream_info(packaging_params.test_params.dump_stream_info);
   demuxer->set_input_format(stream.input_format);
 
@@ -612,11 +613,11 @@ Status CreateAudioVideoJobs(
       continue;
     }
 
-    RETURN_IF_ERROR(
-        CreateDemuxer(stream, packaging_params, &sources[stream.input]));
     cue_aligners[stream.input] =
         sync_points ? std::make_shared<CueAlignmentHandler>(sync_points)
                     : nullptr;
+    RETURN_IF_ERROR(
+        CreateDemuxer(stream, packaging_params, cue_aligners[stream.input], &sources[stream.input]));
   }
 
   for (auto& source : sources) {
@@ -893,7 +894,9 @@ Status Packager::Initialize(
     internal->hls_notifier.reset(new hls::SimpleHlsNotifier(hls_params));
   }
 
-  std::unique_ptr<SyncPointQueue> sync_points;
+  // --add_cues is not set, but we still need to create a SyncPointQueue
+  std::unique_ptr<SyncPointQueue> sync_points(
+      new SyncPointQueue(packaging_params.ad_cue_generator_params));
   if (!packaging_params.ad_cue_generator_params.cue_points.empty()) {
     sync_points.reset(
         new SyncPointQueue(packaging_params.ad_cue_generator_params));

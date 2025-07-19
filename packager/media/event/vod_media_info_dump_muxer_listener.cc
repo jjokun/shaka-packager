@@ -117,8 +117,12 @@ void VodMediaInfoDumpMuxerListener::OnKeyFrame(int64_t timestamp,
 }
 
 void VodMediaInfoDumpMuxerListener::OnCueEvent(int64_t timestamp,
+                                               double break_duration,
+                                               bool out_of_network,
                                                const std::string& cue_data) {
   UNUSED(timestamp);
+  UNUSED(break_duration);
+  UNUSED(out_of_network);
   UNUSED(cue_data);
   NOTIMPLEMENTED();
 }

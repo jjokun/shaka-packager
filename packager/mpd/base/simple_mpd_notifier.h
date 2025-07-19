@@ -49,7 +49,10 @@ class SimpleMpdNotifier : public MpdNotifier {
   bool NotifyCompletedSegment(uint32_t container_id,
                               int64_t duration,
                               uint64_t size) override;
-  bool NotifyCueEvent(uint32_t container_id, int64_t timestamp) override;
+  bool NotifyCueEvent(uint32_t container_id, 
+                      int64_t timestamp,
+                      double break_duration, 
+                      bool out_of_network) override;
   bool NotifyEncryptionUpdate(uint32_t container_id,
                               const std::string& drm_uuid,
                               const std::vector<uint8_t>& new_key_id,

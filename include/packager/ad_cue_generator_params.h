@@ -12,6 +12,9 @@
 namespace shaka {
 
 struct Cuepoint {
+  /// CUE-IN or CUE-OUT.
+  bool out_of_network = false;
+  
   /// Start time of the cuepoint relative to start of the stream.
   double start_time_in_seconds = 0;
 
