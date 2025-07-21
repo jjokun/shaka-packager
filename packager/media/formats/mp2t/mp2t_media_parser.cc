@@ -29,6 +29,7 @@
 #include <packager/media/formats/mp2t/ts_section_pes.h>
 #include <packager/media/formats/mp2t/ts_section_pmt.h>
 #include <packager/media/formats/mp2t/ts_stream_type.h>
+#include <packager/media/formats/mp2t/scte35_section_parser.h>
 
 namespace shaka {
 namespace media {
