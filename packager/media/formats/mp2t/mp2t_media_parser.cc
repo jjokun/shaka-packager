@@ -21,6 +21,7 @@
 #include <packager/media/formats/mp2t/es_parser_h265.h>
 #include <packager/media/formats/mp2t/es_parser_teletext.h>
 #include <packager/media/formats/mp2t/mp2t_common.h>
+#include <packager/media/formats/mp2t/scte35_section_parser.h>
 #include <packager/media/formats/mp2t/ts_audio_type.h>
 #include <packager/media/formats/mp2t/ts_packet.h>
 #include <packager/media/formats/mp2t/ts_section.h>
@@ -28,7 +29,6 @@
 #include <packager/media/formats/mp2t/ts_section_pes.h>
 #include <packager/media/formats/mp2t/ts_section_pmt.h>
 #include <packager/media/formats/mp2t/ts_stream_type.h>
-#include <packager/media/formats/mp2t/scte35_section_parser.h>
 
 namespace shaka {
 namespace media {
