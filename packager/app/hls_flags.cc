@@ -51,3 +51,41 @@ ABSL_FLAG(bool,
           false,
           "Playback of Offline HLS assets shall use EXT-X-SESSION-KEY "
           "to declare all eligible content keys in the master playlist.");
+// for low-latency HLS options
+ABSL_FLAG(bool,
+          low_latency_hls_mode,
+          false,
+          "Enable Low-Latency HLS mode. This will generate an HLS playlist "
+          "with EXT-X-SERVER-CONTROL and use partial segments.");
+ABSL_FLAG(double,
+          hls_partial_segment_duration,
+          0.5,
+          "Target duration for partial segments in Low-Latency HLS (in seconds). "
+          "Only used when low_latency_hls_mode is true. Apple recommends 0.5 seconds.");
+ABSL_FLAG(bool,
+          hls_preload_hints,
+          true,
+          "Enable EXT-X-PRELOAD-HINT tags in the manifest. These tags "
+          "help reduce latency by allowing clients to pre-load upcoming "
+          "segments.");              
+ABSL_FLAG(bool,
+          enable_server_control,
+          false,
+          "Enable EXT-X-SERVER-CONTROL tag in the manifest. This tag "
+          "is required for Low-Latency HLS mode. It provides information "
+          "about the server's capabilities and how it handles partial segments.");
+ABSL_FLAG(bool,
+          hls_server_can_block_reload,
+          false,
+          "Indicates if the server can block playlist reload requests "
+          "until new segments are available.");
+ABSL_FLAG(double,
+          hls_part_hold_back,
+          0.5,
+          "The minimum distance from the end of the Playlist at which "
+          "clients should load available Partial Segments (in seconds).");
+ABSL_FLAG(double,
+          hls_can_skip_until,
+          6.0,
+          "Indicates when the client can skip loading available segments "
+          "and start loading closer to the live edge (in seconds).");      

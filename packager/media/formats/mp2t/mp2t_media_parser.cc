@@ -351,7 +351,7 @@ void Mp2tMediaParser::RegisterPes(int pmt_pid,
       pid_type = PidState::kPidTextPes;
       break;
     case TsStreamType::kScte35: 
-      // SCTE-35ì€ PSI(ì„¹ì…˜) íŒŒì„œë¡œ ë“±ë¡
+      // SCTE-35Àº PSI(¼½¼Ç) ÆÄ¼­·Î µî·Ï
       section_parser = std::make_unique<Scte35SectionParser>(on_cue_info);
       pid_type = PidState::kPidScte35Pes;
       break;

@@ -356,6 +356,8 @@ std::optional<PackagingParams> GetPackagingParams() {
       absl::GetFlag(FLAGS_fragment_duration);
   chunking_params.low_latency_dash_mode =
       absl::GetFlag(FLAGS_low_latency_dash_mode);
+  chunking_params.low_latency_hls_mode =
+      absl::GetFlag(FLAGS_low_latency_hls_mode);
   chunking_params.segment_sap_aligned =
       absl::GetFlag(FLAGS_segment_sap_aligned);
   chunking_params.subsegment_sap_aligned =
@@ -475,6 +477,7 @@ std::optional<PackagingParams> GetPackagingParams() {
   mp4_params.include_pssh_in_stream =
       absl::GetFlag(FLAGS_mp4_include_pssh_in_stream);
   mp4_params.low_latency_dash_mode = absl::GetFlag(FLAGS_low_latency_dash_mode);
+  mp4_params.low_latency_hls_mode = absl::GetFlag(FLAGS_low_latency_hls_mode);
 
   packaging_params.transport_stream_timestamp_offset_ms =
       absl::GetFlag(FLAGS_transport_stream_timestamp_offset_ms);
@@ -544,6 +547,32 @@ std::optional<PackagingParams> GetPackagingParams() {
       absl::GetFlag(FLAGS_hls_media_sequence_number);
   hls_params.start_time_offset = absl::GetFlag(FLAGS_hls_start_time_offset);
   hls_params.create_session_keys = absl::GetFlag(FLAGS_create_session_keys);
+
+  // LL-HLS 관련 파라미터 설정 추가
+  hls_params.low_latency_hls_mode = absl::GetFlag(FLAGS_low_latency_hls_mode);
+  if (hls_params.low_latency_hls_mode) {
+    // LL-HLS 모드가 활성화된 경우 추가 검증
+    if (hls_params.playlist_type != HlsPlaylistType::kLive) {
+      LOG(ERROR) << "Low-Latency HLS mode is only supported with LIVE playlist type";
+      return std::nullopt;
+    }
+    
+    hls_params.partial_segment_duration = 
+        absl::GetFlag(FLAGS_hls_partial_segment_duration);
+    if (hls_params.partial_segment_duration <= 0) {
+      LOG(ERROR) << "partial_segment_duration must be greater than 0";
+      return std::nullopt;
+    }
+
+    hls_params.enable_server_control = absl::GetFlag(FLAGS_enable_server_control);
+    if (hls_params.enable_server_control) {
+      hls_params.server_can_block_reload = absl::GetFlag(FLAGS_hls_server_can_block_reload);
+      hls_params.part_hold_back = absl::GetFlag(FLAGS_hls_part_hold_back);
+      hls_params.can_skip_until = absl::GetFlag(FLAGS_hls_can_skip_until);
+    }
+    
+    hls_params.enable_preload_hints = absl::GetFlag(FLAGS_hls_preload_hints);
+  }
 
   TestParams& test_params = packaging_params.test_params;
   test_params.dump_stream_info = absl::GetFlag(FLAGS_dump_stream_info);

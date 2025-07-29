@@ -31,6 +31,12 @@ struct ChunkingParams {
   /// and mdat atom. Each chunk is uploaded immediately upon creation,
   /// decoupling latency from segment duration.
   bool low_latency_dash_mode = false;
+  /// Enable LL-HLS streaming.
+  /// Each segment consists of many partial segments, and each partial segment  
+  /// contains one chunk. A chunk is the smallest unit and is constructed of a
+  /// single moof and mdat atom. Each chunk is uploaded immediately upon creation,
+  /// decoupling latency from segment duration.
+  bool low_latency_hls_mode = false;
 
   /// Indicates the startNumber in DASH SegmentTemplate and HLS segment name.
   int64_t start_segment_number = 1;

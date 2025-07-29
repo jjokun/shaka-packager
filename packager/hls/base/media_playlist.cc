@@ -1,4 +1,4 @@
-// Copyright 2016 Google LLC. All rights reserved.
+﻿// Copyright 2016 Google LLC. All rights reserved.
 //
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file or at
@@ -79,6 +79,68 @@ std::string GetLanguage(const MediaInfo& media_info) {
   return LanguageToShortestForm(lang);
 }
 
+void AppendServerControl(const HlsParams& hls_params,
+                         std::string* out) {
+  // SERVER-CONTROL 태그는 LL-HLS가 활성화된 라이브 스트림에서만 필요합니다
+  if (hls_params.playlist_type != HlsPlaylistType::kLive ||
+      !hls_params.low_latency_hls_mode) {  // low_latency_mode -> low_latency_hls_mode
+    return;
+  }
+
+  // LL-HLS에는 PART-TARGET이 필수입니다  
+  if (hls_params.partial_segment_duration <= 0) {  // part_target -> partial_segment_duration
+    LOG(WARNING) << "LL-HLS requires PART-TARGET but it is not set";
+    return;
+  }
+
+  // HLS 스펙에 따르면 PART-TARGET 값은 TARGET-DURATION의 절반보다 작아야 합니다
+  if (hls_params.partial_segment_duration >
+      hls_params.target_segment_duration / 2) {
+    LOG(WARNING) << "PART-TARGET (" << hls_params.partial_segment_duration
+                 << ") is larger than half of TARGET-DURATION ("
+                 << hls_params.target_segment_duration / 2
+                 << "). This may cause playback issues.";
+  }
+
+  Tag tag("#EXT-X-SERVER-CONTROL", out);
+
+  // CAN-BLOCK-RELOAD은 선택사항이지만 기본값이 NO이므로 
+  // 활성화된 경우에만 추가합니다
+  tag.AddBool("CAN-BLOCK-RELOAD", hls_params.server_can_block_reload);
+
+  // PART-HOLD-BACK은 마지막 부분 세그먼트가 완료되기 전에 
+  // 클라이언트가 기다려야 하는 최소 지연 시간입니다
+  if (hls_params.part_hold_back > 0) {
+    tag.AddFloat("PART-HOLD-BACK", hls_params.part_hold_back);
+  }
+
+  // CAN-SKIP-UNTIL은 선택사항으로, 클라이언트가 스킵할 수 있는 
+  // 플레이리스트의 시작 부분을 나타냅니다
+  if (hls_params.can_skip_until > 0) {
+    tag.AddFloat("CAN-SKIP-UNTIL", hls_params.can_skip_until);
+  }
+
+  // PART-TARGET은 필수 항목입니다
+  // partial_segment_duration을 PART-TARGET 값으로 사용합니다
+  tag.AddFloat("PART-TARGET", hls_params.partial_segment_duration);
+
+  out->append("\n");
+}
+
+void AppendPartInf(const HlsParams& hls_params, std::string* out) {
+  if (!hls_params.low_latency_hls_mode) {
+    return;
+  }
+
+  if (hls_params.partial_segment_duration <= 0) {
+    return;
+  }
+
+  Tag tag("#EXT-X-PART-INF", out);
+  tag.AddFloat("PART-TARGET", hls_params.partial_segment_duration);
+  out->append("\n");
+}
+
 void AppendExtXMap(const MediaInfo& media_info, std::string* out) {
   if (media_info.has_init_segment_url()) {
     Tag tag("#EXT-X-MAP", out);
@@ -107,7 +169,7 @@ void AppendExtXMap(const MediaInfo& media_info, std::string* out) {
 std::string CreatePlaylistHeader(
     const MediaInfo& media_info,
     int32_t target_duration,
-    HlsPlaylistType type,
+    const HlsParams& hls_params,
     MediaPlaylist::MediaPlaylistStreamType stream_type,
     uint32_t media_sequence_number,
     int discontinuity_sequence_number,
@@ -128,7 +190,7 @@ std::string CreatePlaylistHeader(
       "#EXT-X-TARGETDURATION:%d\n",
       version_line.c_str(), target_duration);
 
-  switch (type) {
+  switch (hls_params.playlist_type) {
     case HlsPlaylistType::kVod:
       header += "#EXT-X-PLAYLIST-TYPE:VOD\n";
       break;
@@ -147,7 +209,7 @@ std::string CreatePlaylistHeader(
       break;
     default:
       NOTIMPLEMENTED() << "Unexpected MediaPlaylistType "
-                       << static_cast<int>(type);
+                       << static_cast<int>(hls_params.playlist_type);
   }
   if (stream_type ==
       MediaPlaylist::MediaPlaylistStreamType::kVideoIFramesOnly) {
@@ -156,6 +218,13 @@ std::string CreatePlaylistHeader(
   if (start_time_offset.has_value()) {
     absl::StrAppendFormat(&header, "#EXT-X-START:TIME-OFFSET=%f\n",
                           start_time_offset.value());
+  }
+
+  if (hls_params.low_latency_hls_mode) {
+    // Add SERVER-CONTROL tag for LL-HLS.
+    AppendServerControl(hls_params, &header);
+    // Add PART-INF tag for LL-HLS.
+    AppendPartInf(hls_params, &header);
   }
 
   // Put EXT-X-MAP at the end since the rest of the playlist is about the
@@ -237,6 +306,63 @@ std::string SegmentInfoEntry::ToString() {
   absl::StrAppendFormat(&result, "\n%s", file_name_.c_str());
 
   return result;
+}
+
+class PartEntry : public HlsEntry {
+ public:
+  // duration_seconds: 부분 세그먼트의 지속 시간 (초 단위)
+  // uri: 부분 세그먼트의 URI
+  // independent: 독립적인 디코딩이 가능한지 여부 (선택적)
+  // byte_range_start: 바이트 범위 시작 위치 (선택적)
+  // byte_range_length: 바이트 범위 길이 (선택적)
+  PartEntry(double duration_seconds,
+           const std::string& uri,
+           bool independent = false,
+           std::optional<uint64_t> byte_range_start = std::nullopt,
+           std::optional<uint64_t> byte_range_length = std::nullopt);
+
+  std::string ToString() override;
+
+ private:
+  PartEntry(const PartEntry&) = delete;
+  PartEntry& operator=(const PartEntry&) = delete;
+
+  const double duration_seconds_;
+  const std::string uri_;
+  const bool independent_;
+  const std::optional<uint64_t> byte_range_start_;
+  const std::optional<uint64_t> byte_range_length_;
+};
+
+PartEntry::PartEntry(double duration_seconds,
+                     const std::string& uri,
+                     bool independent,
+                     std::optional<uint64_t> byte_range_start,
+                     std::optional<uint64_t> byte_range_length)
+    : HlsEntry(HlsEntry::EntryType::kExtPart),
+      duration_seconds_(duration_seconds),
+      uri_(uri),
+      independent_(independent),
+      byte_range_start_(byte_range_start),
+      byte_range_length_(byte_range_length) {}
+
+std::string PartEntry::ToString() {
+  std::string out;
+  
+  Tag tag("#EXT-X-PART", &out);
+  
+  // DURATION 속성은 필수입니다
+  tag.AddFloat("DURATION", duration_seconds_);
+  
+  // URI 속성은 필수입니다
+  tag.AddQuotedString("URI", uri_);
+
+  // INDEPENDENT는 선택적 속성입니다
+  if (independent_) {
+    tag.AddBool("INDEPENDENT", true);
+  }
+
+  return out;
 }
 
 
@@ -545,7 +671,7 @@ bool MediaPlaylist::WriteToFile(const std::filesystem::path& file_path) {
   }
 
   std::string content = CreatePlaylistHeader(
-      media_info_, target_duration_, hls_params_.playlist_type, stream_type_,
+      media_info_, target_duration_, hls_params_, stream_type_,
       media_sequence_number_, discontinuity_sequence_number_,
       hls_params_.start_time_offset);
 
@@ -708,6 +834,18 @@ void MediaPlaylist::AddSegmentInfoEntry(const std::string& segment_file_name,
       segment_file_name, start_time, segment_duration_seconds, use_byte_range_,
       start_byte_offset, size, previous_segment_end_offset_));
   previous_segment_end_offset_ = start_byte_offset + size - 1;
+}
+
+void MediaPlaylist::AddPartialSegment(const std::string& uri,
+                                      double duration_seconds,
+                                      bool independent,
+                                      std::optional<uint64_t> byte_range_start,
+                                      std::optional<uint64_t> byte_range_length) {
+  entries_.emplace_back(new PartEntry(duration_seconds,
+                                    uri,
+                                    independent,
+                                    byte_range_start,
+                                    byte_range_length));
 }
 
 void MediaPlaylist::AdjustLastSegmentInfoEntryDuration(int64_t next_timestamp) {

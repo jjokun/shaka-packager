@@ -47,7 +47,14 @@ class MockHlsNotifier : public hls::HlsNotifier {
                     int64_t start_time,
                     int64_t duration,
                     uint64_t start_byte_offset,
-                    uint64_t size));
+                    uint64_t size));  
+  MOCK_METHOD6(NotifyNewPartialSegment,
+               bool(uint32_t stream_id,
+                    const std::string& file_name,
+                    double duration,
+                    uint64_t start_byte_offset,
+                    uint64_t segment_file_size,
+                    bool is_independent));                   
   MOCK_METHOD4(NotifyKeyFrame,
                bool(uint32_t stream_id,
                     int64_t timestamp,
@@ -65,6 +72,7 @@ class MockHlsNotifier : public hls::HlsNotifier {
            const std::vector<uint8_t>& system_id,
            const std::vector<uint8_t>& iv,
            const std::vector<uint8_t>& protection_system_specific_data));
+  MOCK_CONST_METHOD0(IsLowLatencyMode, bool());           
   MOCK_METHOD0(Flush, bool());
 };
 

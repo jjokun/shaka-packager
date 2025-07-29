@@ -251,6 +251,10 @@ Status Segmenter::FinalizeSegment(size_t stream_id,
   return Status::OK;
 }
 
+void Segmenter::key_frame_infos_clear() {
+  key_frame_infos_.clear();
+}
+
 int32_t Segmenter::GetReferenceTimeScale() const {
   return moov_->header.timescale;
 }

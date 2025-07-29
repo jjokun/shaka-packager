@@ -27,8 +27,9 @@ namespace hls {
 
 class HlsEntry {
  public:
-  enum class EntryType {
+  enum class EntryType {    
     kExtInf,
+    kExtPart,
     kExtKey,
     kExtDiscontinuity,
     kExtPlacementOpportunity,
@@ -139,6 +140,20 @@ class MediaPlaylist {
                           uint64_t start_byte_offset,
                           uint64_t size);
 
+  /// Add a partial segment to the playlist.
+  /// @param uri is the URI of the partial segment.
+  /// @param duration_seconds is the duration of the partial segment in seconds.
+  /// @param independent is true if the partial segment is independent.
+  /// @param byte_range_start is the start of the byte range, or nullopt if
+  ///        the partial segment is not byte range.
+  /// @param byte_range_length is the length of the byte range, or nullopt if
+  ///        the partial segment is not byte range.
+  virtual void AddPartialSegment(const std::string& uri,
+                                 double duration_seconds,
+                                 bool independent,
+                                 std::optional<uint64_t> byte_range_start,
+                                 std::optional<uint64_t> byte_range_length);                       
+
   /// Keyframes must be added in order. It is also called before the containing
   /// segment being called.
   /// @param timestamp is the timestamp of the key frame in timescale of the
@@ -171,7 +186,7 @@ class MediaPlaylist {
   /// https://support.google.com/dfp_premium/answer/7295798?hl=en.
   virtual void AddPlacementOpportunity();
 
-  // ê´‘ê³  ì‹ í˜¸ íƒœê·¸ ì¶”ê°€
+  // ê´‘ê³  ?‹ ?˜¸ ?ƒœê·? ì¶”ê??
   virtual void AddCueEvent(uint32_t timestamp,
                            double break_duration,
                            bool out_of_network);
@@ -198,7 +213,7 @@ class MediaPlaylist {
   /// @return The average bitrate (in bits per second) of this MediaPlaylist.
   virtual uint64_t AvgBitrate() const;
 
-  /// @return the longest segmentâ€™s duration. This will return 0 if no
+  /// @return the longest segmentï¿½ï¿½s duration. This will return 0 if no
   ///         segments have been added.
   virtual double GetLongestSegmentDuration() const;
 
@@ -257,6 +272,8 @@ class MediaPlaylist {
     return characteristics_.size() == 1 &&
            characteristics_[0] == DVS_CHARACTERISTICS;
   }
+
+  int32_t time_scale() const { return time_scale_; } 
 
  private:
   // Add a SegmentInfoEntry (#EXTINF).

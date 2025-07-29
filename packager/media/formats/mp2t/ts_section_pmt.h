@@ -23,7 +23,7 @@ class TsSectionPmt : public TsSectionPsi {
   //  const string& lang, TsAudioType audio_type, uint8_t* descriptor,
   // size_t desriptor_size);
   // Stream type is defined in
-  // "Table 2-34 – Stream type assignments" in H.222
+  // "Table 2-34 ? Stream type assignments" in H.222
   // Audio type is defined in
   // "Table 2-60 - Audio type values" in H.222
   typedef std::function<void(int,

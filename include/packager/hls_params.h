@@ -72,6 +72,17 @@ struct HlsParams {
   std::optional<double> start_time_offset;
   /// Create EXT-X-SESSION-KEY in master playlist
   bool create_session_keys;
+
+    // Low-Latency HLS related parameters
+  bool low_latency_hls_mode = false;
+  double partial_segment_duration = 0.5;
+  bool enable_preload_hints = true;
+  
+  // Server control parameters
+  bool enable_server_control = false;
+  bool server_can_block_reload = false;
+  double part_hold_back = 0.5;
+  double can_skip_until = 6.0;
 };
 
 }  // namespace shaka

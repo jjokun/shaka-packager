@@ -58,6 +58,12 @@ class SimpleHlsNotifier : public HlsNotifier {
                         int64_t duration,
                         uint64_t start_byte_offset,
                         uint64_t size) override;
+  bool NotifyNewPartialSegment(uint32_t stream_id,
+                               const std::string& file_name,
+                               double duration,
+                               uint64_t start_byte_offset,
+                               uint64_t segment_file_size,
+                               bool is_independent) override;
   bool NotifyKeyFrame(uint32_t stream_id,
                       int64_t timestamp,
                       uint64_t start_byte_offset,
@@ -72,6 +78,11 @@ class SimpleHlsNotifier : public HlsNotifier {
       const std::vector<uint8_t>& system_id,
       const std::vector<uint8_t>& iv,
       const std::vector<uint8_t>& protection_system_specific_data) override;
+
+  bool IsLowLatencyMode() const override {
+    return hls_params().low_latency_hls_mode;
+  }
+
   bool Flush() override;
   /// }@
 

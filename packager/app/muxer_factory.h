@@ -13,6 +13,7 @@
 #include <packager/media/base/container_names.h>
 #include <packager/mp4_output_params.h>
 #include <packager/mpd/base/mpd_builder.h>
+#include <packager/hls_params.h>
 
 namespace shaka {
 struct PackagingParams;
@@ -48,6 +49,7 @@ class MuxerFactory {
   MuxerFactory& operator=(const MuxerFactory&) = delete;
 
   const Mp4OutputParams mp4_params_;
+  const HlsParams hls_params_;
   const std::string temp_dir_;
   int32_t transport_stream_timestamp_offset_ms_ = 0;
   std::shared_ptr<Clock> clock_ = nullptr;

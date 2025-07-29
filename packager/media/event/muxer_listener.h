@@ -140,6 +140,20 @@ class MuxerListener {
                             uint64_t segment_file_size,
                             int64_t segment_number) = 0;
 
+  /// Called when a partial segment has been muxed and the file has been written.
+  /// Note: This is used to signal new subsegments or chunks.
+  /// @param file_name is the name of the file for the new partial segment.
+  /// @param start_time is the start time of the partial segment, relative to
+  ///        the timescale specified by MediaInfo passed to OnMediaStart().
+  /// @param duration is the duration of the partial segment, relative to the
+  ///        timescale specified by MediaInfo passed to OnMediaStart().
+  /// @param segment_file_size is the size of the partial segment file in bytes.
+  /// @param is_independent is true if the partial segment is independent.
+  virtual void OnNewPartialSegment(const std::string& file_name,
+                                   double duration,
+                                   uint64_t segment_file_size,
+                                   bool is_independent) {}
+                              
   /// Called when a segment has been muxed and the entire file has been written.
   /// For Low Latency only. Note that it should be called after OnNewSegment.
   /// When the low latency segment is initally added to the manifest, the size

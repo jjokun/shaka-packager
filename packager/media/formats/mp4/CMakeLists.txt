@@ -29,6 +29,8 @@ add_library(mp4 STATIC
   mp4_muxer.h
   multi_segment_segmenter.cc
   multi_segment_segmenter.h
+  partial_segment_segmenter.cc
+  partial_segment_segmenter.h
   segmenter.cc
   segmenter.h
   single_segment_segmenter.cc

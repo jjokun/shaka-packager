@@ -28,6 +28,7 @@
 #include <packager/media/formats/mp4/box_definitions.h>
 #include <packager/media/formats/mp4/low_latency_segment_segmenter.h>
 #include <packager/media/formats/mp4/multi_segment_segmenter.h>
+#include <packager/media/formats/mp4/partial_segment_segmenter.h>
 #include <packager/media/formats/mp4/single_segment_segmenter.h>
 #include <packager/media/formats/ttml/ttml_generator.h>
 
@@ -132,15 +133,15 @@ void GenerateSinf(FourCC old_type,
     case FOURCC_cbc1:
       DCHECK_EQ(track_encryption.default_crypt_byte_block, 0u);
       DCHECK_EQ(track_encryption.default_skip_byte_block, 0u);
-      // CENCv3 10.1 ‘cenc’ AES-CTR scheme and 10.2 ‘cbc1’ AES-CBC scheme:
-      // The version of the Track Encryption Box (‘tenc’) SHALL be 0.
+      // CENCv3 10.1 ??�cenc??? AES-CTR scheme and 10.2 ??�cbc1??? AES-CBC scheme:
+      // The version of the Track Encryption Box (??�tenc???) SHALL be 0.
       track_encryption.version = 0;
       break;
     case FOURCC_cbcs:
     case FOURCC_cens:
-      // CENCv3 10.3 ‘cens’ AES-CTR subsample pattern encryption scheme and
-      //        10.4 ‘cbcs’ AES-CBC subsample pattern encryption scheme:
-      // The version of the Track Encryption Box (‘tenc’) SHALL be 1.
+      // CENCv3 10.3 ??�cens??? AES-CTR subsample pattern encryption scheme and
+      //        10.4 ??�cbcs??? AES-CBC subsample pattern encryption scheme:
+      // The version of the Track Encryption Box (??�tenc???) SHALL be 1.
       track_encryption.version = 1;
       break;
     default:
@@ -337,6 +338,9 @@ Status MP4Muxer::DelayInitializeMuxer() {
   } else if (options().mp4_params.low_latency_dash_mode) {
     segmenter_.reset(new LowLatencySegmentSegmenter(options(), std::move(ftyp),
                                                     std::move(moov)));
+  } else if (options().hls_params.low_latency_hls_mode) {
+    segmenter_.reset(new PartialSegmentSegmenter(options(), std::move(ftyp),
+                                                 std::move(moov)));
   } else {
     segmenter_.reset(
         new MultiSegmentSegmenter(options(), std::move(ftyp), std::move(moov)));

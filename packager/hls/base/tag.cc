@@ -37,6 +37,12 @@ void Tag::AddFloat(const std::string& key, float value) {
   absl::StrAppendFormat(buffer_, "%s=%.3f", key.c_str(), value);
 }
 
+void Tag::AddBool(const std::string& key, bool value) {
+  NextField();
+  absl::StrAppendFormat(buffer_, "%s=%s", key.c_str(),
+                        value ? "YES" : "NO");
+}
+
 void Tag::AddNumberPair(const std::string& key,
                         uint64_t number1,
                         char separator,
@@ -44,6 +50,13 @@ void Tag::AddNumberPair(const std::string& key,
   NextField();
   absl::StrAppendFormat(buffer_, "%s=%" PRIu64 "%c%" PRIu64, key.c_str(),
                         number1, separator, number2);
+}
+
+void Tag::AddQuotedNumber(const std::string& key,
+                              uint64_t number1) {
+  NextField();
+  absl::StrAppendFormat(buffer_, "%s=\"%" PRIu64 "\"", key.c_str(),
+                        number1);
 }
 
 void Tag::AddQuotedNumberPair(const std::string& key,

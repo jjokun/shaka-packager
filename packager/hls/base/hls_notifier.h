@@ -65,6 +65,23 @@ class HlsNotifier {
                                 uint64_t start_byte_offset,
                                 uint64_t size) = 0;
 
+  /// @param stream_id is the value set by NotifyNewPartialSegment().
+  /// @param file_name is the name of the file for the new partial segment.
+  /// @param start_time is the start time of the partial segment in timescale units
+  ///        passed in @a media_info.
+  /// @param duration is also in terms of timescale.
+  /// @param start_byte_offset is the offset of where the subsegment starts.
+  /// @param segment_file_size is the size of the partial segment file.
+  /// @param is_independent is true if the partial segment is independent.
+  virtual bool NotifyNewPartialSegment(uint32_t stream_id,
+                                       const std::string& file_name,
+                                       double duration,
+                                       uint64_t start_byte_offset,
+                                       uint64_t segment_file_size,
+                                       bool is_independent) = 0;
+
+  virtual bool IsLowLatencyMode() const = 0;                                
+
   /// Called on every key frame. For Video only.
   /// @param stream_id is the value set by NotifyNewStream().
   /// @param timestamp is the timesamp of the key frame in timescale units

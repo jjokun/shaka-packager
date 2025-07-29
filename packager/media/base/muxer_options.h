@@ -11,6 +11,7 @@
 #include <string>
 
 #include <packager/mp4_output_params.h>
+#include <packager/hls_params.h>
 
 namespace shaka {
 namespace media {
@@ -22,6 +23,9 @@ struct MuxerOptions {
 
   /// MP4 (ISO-BMFF) specific parameters.
   Mp4OutputParams mp4_params;
+
+  /// HLS specific parameters.
+  HlsParams hls_params;
 
   // A positive value, in milliseconds, by which output timestamps are offset to
   // compensate for negative timestamps in the input.

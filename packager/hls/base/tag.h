@@ -31,11 +31,17 @@ class Tag {
   /// Add a non-quoted float value to the argument list.
   void AddFloat(const std::string& key, float value);
 
+  /// Add a boolean value to the argument list.  
+  void AddBool(const std::string& key, bool value);
+
   /// Add a pair of numbers with a symbol separating them.
   void AddNumberPair(const std::string& key,
                      uint64_t number1,
                      char separator,
                      uint64_t number2);
+
+  /// Add a quoted numeric value to the argument list.
+  void AddQuotedNumber(const std::string& key, uint64_t number1);
 
   /// Add a quoted pair of numbers with a symbol separating them.
   void AddQuotedNumberPair(const std::string& key,

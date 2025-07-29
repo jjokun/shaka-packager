@@ -402,6 +402,51 @@ bool SimpleHlsNotifier::NotifyNewSegment(uint32_t stream_id,
   return true;
 }
 
+bool SimpleHlsNotifier::NotifyNewPartialSegment(uint32_t stream_id,
+                                                const std::string& file_name,
+                                                double duration,
+                                                uint64_t start_byte_offset,
+                                                uint64_t segment_file_size,
+                                                bool is_independent) {
+  if (hls_params().playlist_type == HlsPlaylistType::kVod ||
+      !hls_params().low_latency_hls_mode) {
+    return true;
+  }
+
+  absl::MutexLock lock(&lock_);
+  auto stream_iterator = stream_map_.find(stream_id);
+  if (stream_iterator == stream_map_.end()) {
+    LOG(ERROR) << "Cannot find stream with ID: " << stream_id;
+    return false;
+  }
+
+  auto& media_playlist = stream_iterator->second->media_playlist;
+  const std::string& segment_url =
+      GenerateSegmentUrl(file_name, hls_params().base_url,
+                         master_playlist_dir_, media_playlist->file_name());
+
+  double duration_seconds = duration;
+  media_playlist->AddPartialSegment(segment_url,
+                                    duration_seconds,
+                                    is_independent,
+                                    start_byte_offset,
+                                    segment_file_size);
+
+  if (hls_params().playlist_type == HlsPlaylistType::kLive ||
+      hls_params().playlist_type == HlsPlaylistType::kEvent) {
+    if (!WriteMediaPlaylist(master_playlist_dir_, media_playlist.get()))
+      return false;
+
+    if (!master_playlist_->WriteMasterPlaylist(
+            hls_params().base_url, master_playlist_dir_, media_playlists_)) {
+      LOG(ERROR) << "Failed to write master playlist.";
+      return false;
+    }
+  }
+
+  return true;
+}
+
 bool SimpleHlsNotifier::NotifyKeyFrame(uint32_t stream_id,
                                        int64_t timestamp,
                                        uint64_t start_byte_offset,

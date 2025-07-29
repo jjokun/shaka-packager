@@ -22,13 +22,15 @@ MuxerFactory::MuxerFactory(const PackagingParams& packaging_params)
     : mp4_params_(packaging_params.mp4_output_params),
       temp_dir_(packaging_params.temp_dir),
       transport_stream_timestamp_offset_ms_(
-          packaging_params.transport_stream_timestamp_offset_ms) {}
+          packaging_params.transport_stream_timestamp_offset_ms),
+      hls_params_(packaging_params.hls_params) {}
 
 std::shared_ptr<Muxer> MuxerFactory::CreateMuxer(
     MediaContainerName output_format,
     const StreamDescriptor& stream) {
   MuxerOptions options;
   options.mp4_params = mp4_params_;
+  options.hls_params = hls_params_;
   options.transport_stream_timestamp_offset_ms =
       transport_stream_timestamp_offset_ms_;
   options.temp_dir = temp_dir_;

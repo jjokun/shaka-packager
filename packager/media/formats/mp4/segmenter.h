@@ -119,6 +119,7 @@ class Segmenter {
   const std::vector<KeyFrameInfo>& key_frame_infos() const {
     return key_frame_infos_;
   }
+  void key_frame_infos_clear();
 
   void set_progress_target(uint64_t progress_target) {
     progress_target_ = progress_target;

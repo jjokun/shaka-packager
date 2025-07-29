@@ -97,7 +97,7 @@ void FillPsshGenerators(
     no_pssh_systems->emplace_back(std::begin(kFairPlaySystemId),
                                   std::end(kFairPlaySystemId));
   }
-  // We only support Marlin Adaptive Streaming Specification – Simple Profile
+  // We only support Marlin Adaptive Streaming Specification ? Simple Profile
   // with Implicit Content ID Mapping, which does not need a PSSH. Marlin
   // specific PSSH with Explicit Content ID Mapping is not generated.
   if (has_flag(encryption_params.protection_systems,
