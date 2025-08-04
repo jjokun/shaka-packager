@@ -47,6 +47,7 @@ class CombinedMuxerListener : public MuxerListener {
                     uint64_t segment_file_size,
                     int64_t segment_number) override;
   void OnNewPartialSegment(const std::string& file_name,
+                           int64_t start_time,
                            double duration,
                            uint64_t segment_file_size,
                            bool is_independent) override;                  

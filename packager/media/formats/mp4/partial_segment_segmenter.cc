@@ -155,6 +155,7 @@ Status PartialSegmentSegmenter::WriteInitialChunk(int64_t segment_number) {
 }
 
 Status PartialSegmentSegmenter::WriteChunk() {
+  DCHECK(sidx());
   DCHECK(fragment_buffer());
 
   // Buffer chunk
@@ -183,15 +184,9 @@ Status PartialSegmentSegmenter::WritePartialSegment() {
   }
 
   // Generate partial segment file name
-  std::string partial_name;
-  const size_t extension_pos = file_name_.find_last_of('.');
-  if (extension_pos != std::string::npos) {
-    partial_name = file_name_.substr(0, extension_pos) + 
-                   ".part" + std::to_string(num_partials_in_seg_) +
-                   file_name_.substr(extension_pos);
-  } else {
-    partial_name = file_name_ + ".part" + std::to_string(num_partials_in_seg_);
-  }
+  std::string partial_name = GetPartialSegmentName(
+      options().segment_template, sidx()->earliest_presentation_time,
+      num_segments_, options().bandwidth, num_partials_in_seg_); 
   
   // Create partial segment file
   std::unique_ptr<File, FileCloser> partial_file(
@@ -225,6 +220,7 @@ Status PartialSegmentSegmenter::WritePartialSegment() {
 
   if (muxer_listener()) {
     muxer_listener()->OnNewPartialSegment(partial_name,
+                                          sidx()->earliest_presentation_time,
                                           total_buffered_duration_,
                                           partial_size,
                                           is_independent);

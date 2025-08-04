@@ -69,7 +69,7 @@ class Representation {
   /// AdaptationSet level and some at Representation level.
   /// @param element contains the ContentProtection element contents.
   ///        If @a element has {value, schemeIdUri} set and has
-  ///        {‚Äúvalue‚Äù, ‚ÄúschemeIdUri‚Äù} as key for @a additional_attributes,
+  ///        {°∞value°±, °∞schemeIdUri°±} as key for @a additional_attributes,
   ///        then the former is used.
   virtual void AddContentProtectionElement(
       const ContentProtectionElement& element);

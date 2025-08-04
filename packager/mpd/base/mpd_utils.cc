@@ -370,7 +370,7 @@ void UpdateContentProtectionPsshHelper(
 
 namespace {
 
-// UUID for Marlin Adaptive Streaming Specification – Simple Profile from
+// UUID for Marlin Adaptive Streaming Specification ? Simple Profile from
 // https://dashif.org/identifiers/content_protection/.
 const char kMarlinUUID[] = "5e629af5-38da-4063-8977-97ffbd9902d4";
 // String representation of media::kFairPlaySystemId.

@@ -150,6 +150,7 @@ class MuxerListener {
   /// @param segment_file_size is the size of the partial segment file in bytes.
   /// @param is_independent is true if the partial segment is independent.
   virtual void OnNewPartialSegment(const std::string& file_name,
+                                   int64_t start_time,
                                    double duration,
                                    uint64_t segment_file_size,
                                    bool is_independent) {}

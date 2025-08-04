@@ -48,6 +48,11 @@ class HlsEntry {
   EntryType type_;
 };
 
+struct RemoveSegmentInfo {
+  std::string segment_to_be_removed;
+  std::list<std::string> partial_segments_to_be_removed;
+};
+
 /// Methods are virtual for mocking.
 class MediaPlaylist {
  public:
@@ -148,7 +153,8 @@ class MediaPlaylist {
   ///        the partial segment is not byte range.
   /// @param byte_range_length is the length of the byte range, or nullopt if
   ///        the partial segment is not byte range.
-  virtual void AddPartialSegment(const std::string& uri,
+  virtual void AddPartialSegment(const std::string& part_uri,
+                                 int64_t start_time, 
                                  double duration_seconds,
                                  bool independent,
                                  std::optional<uint64_t> byte_range_start,
@@ -186,7 +192,7 @@ class MediaPlaylist {
   /// https://support.google.com/dfp_premium/answer/7295798?hl=en.
   virtual void AddPlacementOpportunity();
 
-  // ê´‘ê³  ?‹ ?˜¸ ?ƒœê·? ì¶”ê??
+  // ±¤°í ?????? ????? Ãß???
   virtual void AddCueEvent(uint32_t timestamp,
                            double break_duration,
                            bool out_of_network);
@@ -213,7 +219,7 @@ class MediaPlaylist {
   /// @return The average bitrate (in bits per second) of this MediaPlaylist.
   virtual uint64_t AvgBitrate() const;
 
-  /// @return the longest segmentï¿½ï¿½s duration. This will return 0 if no
+  /// @return the longest segment??s duration. This will return 0 if no
   ///         segments have been added.
   virtual double GetLongestSegmentDuration() const;
 
@@ -291,7 +297,8 @@ class MediaPlaylist {
   // Remove the segment specified by |start_time|. The actual deletion can
   // happen at a later time depending on the value of
   // |preserved_segment_outside_live_window| in |hls_params_|.
-  void RemoveOldSegment(int64_t start_time);
+  void RemoveOldSegment(int64_t start_time, 
+                        std::list<std::string> partial_segments_to_be_removed);
 
   const HlsParams& hls_params_;
   // Mainly for MasterPlaylist to use these values.
@@ -309,6 +316,7 @@ class MediaPlaylist {
   std::vector<std::string> characteristics_;
   bool forced_subtitle_ = false;
   uint32_t media_sequence_number_ = 0;
+  uint32_t media_partial_number_ = 0;
   bool inserted_discontinuity_tag_ = false;
   int discontinuity_sequence_number_ = 0;
 
@@ -331,7 +339,7 @@ class MediaPlaylist {
   double current_buffer_depth_ = 0;
   // A list to hold the file names of the segments to be removed temporarily.
   // Once a file is actually removed, it is removed from the list.
-  std::list<std::string> segments_to_be_removed_;
+  std::list<RemoveSegmentInfo> segments_to_be_removed_;
 
   // Used by kVideoIFrameOnly playlists to track the i-frames (key frames).
   struct KeyFrameInfo {

@@ -75,6 +75,7 @@ class HlsNotifier {
   /// @param is_independent is true if the partial segment is independent.
   virtual bool NotifyNewPartialSegment(uint32_t stream_id,
                                        const std::string& file_name,
+                                       int64_t start_time,
                                        double duration,
                                        uint64_t start_byte_offset,
                                        uint64_t segment_file_size,

@@ -308,45 +308,50 @@ std::string SegmentInfoEntry::ToString() {
   return result;
 }
 
-class PartEntry : public HlsEntry {
+class PartialSegmentInfoEntry : public HlsEntry {
  public:
   // duration_seconds: 부분 세그먼트의 지속 시간 (초 단위)
   // uri: 부분 세그먼트의 URI
   // independent: 독립적인 디코딩이 가능한지 여부 (선택적)
   // byte_range_start: 바이트 범위 시작 위치 (선택적)
   // byte_range_length: 바이트 범위 길이 (선택적)
-  PartEntry(double duration_seconds,
-           const std::string& uri,
-           bool independent = false,
-           std::optional<uint64_t> byte_range_start = std::nullopt,
-           std::optional<uint64_t> byte_range_length = std::nullopt);
+  PartialSegmentInfoEntry(const std::string& part_uri,
+                          int64_t start_time,
+                          double duration_seconds,           
+                          bool independent = false,
+                          std::optional<uint64_t> byte_range_start = std::nullopt,
+                          std::optional<uint64_t> byte_range_length = std::nullopt);
 
   std::string ToString() override;
+  int64_t start_time() const { return start_time_; }
 
  private:
-  PartEntry(const PartEntry&) = delete;
-  PartEntry& operator=(const PartEntry&) = delete;
+  PartialSegmentInfoEntry(const PartialSegmentInfoEntry&) = delete;
+  PartialSegmentInfoEntry& operator=(const PartialSegmentInfoEntry&) = delete;
 
+  const std::string part_uri_;
   const double duration_seconds_;
-  const std::string uri_;
+  const int64_t start_time_;
   const bool independent_;
   const std::optional<uint64_t> byte_range_start_;
   const std::optional<uint64_t> byte_range_length_;
 };
 
-PartEntry::PartEntry(double duration_seconds,
-                     const std::string& uri,
-                     bool independent,
-                     std::optional<uint64_t> byte_range_start,
-                     std::optional<uint64_t> byte_range_length)
+PartialSegmentInfoEntry::PartialSegmentInfoEntry(const std::string& part_uri,
+                                                 int64_t start_time,
+                                                 double duration_seconds,  
+                                                 bool independent,
+                                                 std::optional<uint64_t> byte_range_start,
+                                                 std::optional<uint64_t> byte_range_length)
     : HlsEntry(HlsEntry::EntryType::kExtPart),
+      part_uri_(part_uri),
       duration_seconds_(duration_seconds),
-      uri_(uri),
+      start_time_(start_time),
       independent_(independent),
       byte_range_start_(byte_range_start),
       byte_range_length_(byte_range_length) {}
 
-std::string PartEntry::ToString() {
+std::string PartialSegmentInfoEntry::ToString() {
   std::string out;
   
   Tag tag("#EXT-X-PART", &out);
@@ -355,7 +360,7 @@ std::string PartEntry::ToString() {
   tag.AddFloat("DURATION", duration_seconds_);
   
   // URI 속성은 필수입니다
-  tag.AddQuotedString("URI", uri_);
+  tag.AddQuotedString("URI", part_uri_);
 
   // INDEPENDENT는 선택적 속성입니다
   if (independent_) {
@@ -836,16 +841,18 @@ void MediaPlaylist::AddSegmentInfoEntry(const std::string& segment_file_name,
   previous_segment_end_offset_ = start_byte_offset + size - 1;
 }
 
-void MediaPlaylist::AddPartialSegment(const std::string& uri,
+void MediaPlaylist::AddPartialSegment(const std::string& part_uri,
+                                      int64_t start_time, 
                                       double duration_seconds,
                                       bool independent,
                                       std::optional<uint64_t> byte_range_start,
                                       std::optional<uint64_t> byte_range_length) {
-  entries_.emplace_back(new PartEntry(duration_seconds,
-                                    uri,
-                                    independent,
-                                    byte_range_start,
-                                    byte_range_length));
+  entries_.emplace_back(new PartialSegmentInfoEntry(part_uri,
+                                                    start_time,
+                                                    duration_seconds,
+                                                    independent,
+                                                    byte_range_start,
+                                                    byte_range_length));
 }
 
 void MediaPlaylist::AdjustLastSegmentInfoEntryDuration(int64_t next_timestamp) {
@@ -899,6 +906,10 @@ void MediaPlaylist::SlideWindow() {
   //    #EXTINF      <3>
   //    #EXTINF      <4>
   std::list<std::unique_ptr<HlsEntry>> ext_x_keys;
+
+  std::list<std::unique_ptr<HlsEntry>> ext_x_parts;
+
+  std::list<std::string> partial_segments_to_be_removed;
   // Consecutive key entries are either fully removed or not removed at all.
   // Keep track of entry types so we know if it is consecutive key entries.
   HlsEntry::EntryType prev_entry_type = HlsEntry::EntryType::kExtInf;
@@ -912,10 +923,19 @@ void MediaPlaylist::SlideWindow() {
       ext_x_keys.push_back(std::move(*last));
     } else if (entry_type == HlsEntry::EntryType::kExtDiscontinuity) {
       ++discontinuity_sequence_number_;
+    } else if (entry_type == HlsEntry::EntryType::kExtPart) {
+      const PartialSegmentInfoEntry& partial_info =
+          *reinterpret_cast<PartialSegmentInfoEntry*>(last->get());
+      ext_x_parts.push_back(std::move(*last));      
+      partial_segments_to_be_removed.push_back(media::GetPartialSegmentName(
+          media_info_.segment_template(), partial_info.start_time(),
+          media_sequence_number_, media_info_.bandwidth(), media_partial_number_));
+      media_partial_number_++;
     } else {
       DCHECK_EQ(static_cast<int>(entry_type),
                 static_cast<int>(HlsEntry::EntryType::kExtInf));
 
+      media_partial_number_ = 0;
       const SegmentInfoEntry& segment_info =
           *reinterpret_cast<SegmentInfoEntry*>(last->get());
       // Remove the current segment only if it falls completely out of time
@@ -923,36 +943,59 @@ void MediaPlaylist::SlideWindow() {
       const bool segment_within_time_shift_buffer =
           current_buffer_depth_ - segment_info.duration_seconds() <
           hls_params_.time_shift_buffer_depth;
-      if (segment_within_time_shift_buffer)
+      if (segment_within_time_shift_buffer) 
         break;
       current_buffer_depth_ -= segment_info.duration_seconds();
-      RemoveOldSegment(segment_info.start_time());
+      RemoveOldSegment(segment_info.start_time(), partial_segments_to_be_removed);
       media_sequence_number_++;
+      ext_x_parts.clear();
+      partial_segments_to_be_removed.clear();
     }
     prev_entry_type = entry_type;
   }
   entries_.erase(entries_.begin(), last);
+  // Add back the PART entries that were removed.
+  entries_.insert(entries_.begin(),
+                  std::make_move_iterator(ext_x_parts.begin()),
+                  std::make_move_iterator(ext_x_parts.end()));
+  ext_x_parts.clear();
   // Add key entries back.
   entries_.insert(entries_.begin(), std::make_move_iterator(ext_x_keys.begin()),
-                  std::make_move_iterator(ext_x_keys.end()));
+                  std::make_move_iterator(ext_x_keys.end()));                  
 }
 
-void MediaPlaylist::RemoveOldSegment(int64_t start_time) {
+void MediaPlaylist::RemoveOldSegment(int64_t start_time, 
+                                     std::list<std::string> partial_segments_to_be_removed) {
   if (hls_params_.preserved_segments_outside_live_window == 0)
     return;
   if (stream_type_ == MediaPlaylistStreamType::kVideoIFramesOnly)
     return;
 
-  segments_to_be_removed_.push_back(media::GetSegmentName(
-      media_info_.segment_template(), start_time, media_sequence_number_ + 1,
-      media_info_.bandwidth()));
+  RemoveSegmentInfo remove_segment_info;
+  remove_segment_info.segment_to_be_removed = media::GetSegmentName(
+      media_info_.segment_template(), start_time, media_sequence_number_,
+      media_info_.bandwidth());
+  remove_segment_info.partial_segments_to_be_removed.insert(
+      remove_segment_info.partial_segments_to_be_removed.end(),
+      std::make_move_iterator(partial_segments_to_be_removed.begin()),
+      std::make_move_iterator(partial_segments_to_be_removed.end()));
+  
+  segments_to_be_removed_.push_back(std::move(remove_segment_info));
   while (segments_to_be_removed_.size() >
-         hls_params_.preserved_segments_outside_live_window) {
-    VLOG(2) << "Deleting " << segments_to_be_removed_.front();
-    if (!File::Delete(segments_to_be_removed_.front().c_str())) {
-      LOG(WARNING) << "Failed to delete " << segments_to_be_removed_.front()
+         hls_params_.preserved_segments_outside_live_window) {    
+    VLOG(2) << "Deleting " << segments_to_be_removed_.front().segment_to_be_removed;
+    if (!File::Delete(segments_to_be_removed_.front().segment_to_be_removed.c_str())) {
+      LOG(WARNING) << "Failed to delete " << segments_to_be_removed_.front().segment_to_be_removed
                    << "; Will retry later.";
       break;
+    }
+    for (const auto& partial_segment : segments_to_be_removed_.front().partial_segments_to_be_removed) {
+      VLOG(2) << "Deleting " << partial_segment;
+      if (!File::Delete(partial_segment.c_str())) {
+        LOG(WARNING) << "Failed to delete " << partial_segment
+                     << "; Will retry later.";
+        break;
+      }
     }
     segments_to_be_removed_.pop_front();
   }

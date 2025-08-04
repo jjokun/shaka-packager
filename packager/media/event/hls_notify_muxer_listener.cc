@@ -264,19 +264,19 @@ void HlsNotifyMuxerListener::OnNewSegment(const std::string& file_name,
   }
 }
 
-void HlsNotifyMuxerListener::OnNewPartialSegment(
-    const std::string& file_name,
-    double duration,
-    uint64_t segment_file_size,
-    bool is_independent) {
+void HlsNotifyMuxerListener::OnNewPartialSegment(const std::string& file_name,
+                                                 int64_t start_time,
+                                                 double duration,
+                                                 uint64_t segment_file_size,
+                                                 bool is_independent) {
   if (!media_info_->has_segment_template() || !hls_notifier_->IsLowLatencyMode()) {
     return;
   }
 
   const size_t kStartingByteOffset = 0u;
   const bool result = hls_notifier_->NotifyNewPartialSegment(
-      stream_id_.value(), file_name, duration, kStartingByteOffset,
-      segment_file_size, is_independent);
+      stream_id_.value(), file_name, start_time, duration, 
+      kStartingByteOffset, segment_file_size, is_independent);
 
   LOG_IF(WARNING, !result) << "Failed to add new partial segment.";
 }

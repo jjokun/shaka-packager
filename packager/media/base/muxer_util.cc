@@ -62,7 +62,7 @@ Status ValidateSegmentTemplate(const std::string& segment_template) {
   bool has_time = false;
   // Every second substring in split output should be an identifier.
   for (size_t i = 1; i < splits.size(); i += 2) {
-    // Each identifier may be suffixed, within the enclosing ‘$’ characters,
+    // Each identifier may be suffixed, within the enclosing ��$�� characters,
     // with an additional format tag aligned with the printf format tag as
     // defined in IEEE 1003.1-2008 [10] following this prototype: %0[width]d.
     size_t format_pos = splits[i].find('%');
@@ -79,7 +79,7 @@ Status ValidateSegmentTemplate(const std::string& segment_template) {
       return Status(
           error::UNIMPLEMENTED,
           "Segment template flag $RepresentationID$ is not supported yet.");
-    } else if (identifier == "Number") {
+    } else if (identifier == "Number" || identifier == "PartialNumber") {
       has_number = true;
     } else if (identifier == "Time") {
       has_time = true;
@@ -111,7 +111,8 @@ Status ValidateSegmentTemplate(const std::string& segment_template) {
 std::string GetSegmentName(const std::string& segment_template,
                            int64_t segment_start_time,
                            uint32_t segment_number,
-                           uint32_t bandwidth) {
+                           uint32_t bandwidth,
+                           uint32_t partial_number) {
   DCHECK_EQ(Status::OK, ValidateSegmentTemplate(segment_template));
 
   std::vector<std::string> splits = absl::StrSplit(segment_template, "$");
@@ -134,7 +135,7 @@ std::string GetSegmentName(const std::string& segment_template,
     size_t format_pos = splits[i].find('%');
     std::string identifier = splits[i].substr(0, format_pos);
     DCHECK(identifier == "Number" || identifier == "Time" ||
-           identifier == "Bandwidth");
+           identifier == "Bandwidth" || identifier == "PartialNumber");
 
     std::string format_tag;
     if (format_pos != std::string::npos) {
@@ -155,6 +156,14 @@ std::string GetSegmentName(const std::string& segment_template,
     if (identifier == "Number") {
       // SegmentNumber starts from 1.
       format_args.emplace_back(static_cast<uint64_t>(segment_number));
+    } else if (identifier == "PartialNumber") {
+      // PartialNumber starts from 1.
+      format_args.emplace_back(static_cast<uint64_t>(partial_number));
+    } else if (identifier == "Bandwidth") {
+      format_args.emplace_back(static_cast<uint64_t>(bandwidth));
+    } else if (identifier == "RepresentationID") {
+      // RepresentationID is not supported yet, so we skip it.
+      continue;
     } else if (identifier == "Time") {
       format_args.emplace_back(static_cast<uint64_t>(segment_start_time));
     } else if (identifier == "Bandwidth") {
@@ -168,6 +177,46 @@ std::string GetSegmentName(const std::string& segment_template,
   }
   return segment_name;
 }
+
+std::string GetPartialSegmentName(const std::string& segment_template,
+                                   int64_t segment_start_time,
+                                   uint32_t segment_number,
+                                   uint32_t bandwidth,
+                                   uint32_t partial_number) {
+  DCHECK_EQ(Status::OK, ValidateSegmentTemplate(segment_template));
+
+  // Check if the segment template contains $Number$.
+  size_t number_pos = segment_template.find("$Number$");
+  if (number_pos != std::string::npos) {
+    // If $Number$ is present, insert $PartialNumber$ after it.
+    std::string new_segment_template = segment_template;
+    new_segment_template.insert(number_pos + std::string("$Number$").length(),
+                                ".$PartialNumber$");
+    // Replace $PartialNumber$ with the actual partial number.
+    // This is a simplified approach, assuming $PartialNumber$ is not part of
+    // the original segment_template and is only used for partial segments.
+    // A more robust solution would involve extending ValidateSegmentTemplate
+    // and GetSegmentName to handle $PartialNumber$.
+    return GetSegmentName(
+        new_segment_template, segment_start_time, segment_number, bandwidth, 
+        partial_number);
+    } else {
+      // If $Number$ is not present, insert $PartialNumber$ before the file extension.
+      size_t extension_pos = segment_template.find_last_of('.');
+      if (extension_pos == std::string::npos) {
+        // If no extension is found, append $PartialNumber$ at the end.
+        return GetSegmentName(
+            segment_template + ".$PartialNumber$", segment_start_time,
+            segment_number, bandwidth, partial_number);
+      } else {
+        // Insert $PartialNumber$ before the extension.
+        std::string new_segment_template = segment_template;
+        new_segment_template.insert(extension_pos, ".$PartialNumber$");
+        return GetSegmentName(new_segment_template, segment_start_time,
+                              segment_number, bandwidth, partial_number);
+      }  
+    }
+  }
 
 }  // namespace media
 }  // namespace shaka

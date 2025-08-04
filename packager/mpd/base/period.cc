@@ -271,7 +271,7 @@ bool Period::SetNewAdaptationSetAttributes(
 
     // Set transfer characteristics.
     // https://dashif.org/docs/DASH-IF-IOP-v4.3.pdf - 4.2.5.1
-    // ISO/IEC 23001-8 MPEG systems technologies — Part 8: Coding-independent
+    // ISO/IEC 23001-8 MPEG systems technologies ? Part 8: Coding-independent
     // code points. https://en.wikipedia.org/wiki/Coding-independent_code_points
     // - Common CCIP values.
     // Dolby vision:

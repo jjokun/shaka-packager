@@ -404,6 +404,7 @@ bool SimpleHlsNotifier::NotifyNewSegment(uint32_t stream_id,
 
 bool SimpleHlsNotifier::NotifyNewPartialSegment(uint32_t stream_id,
                                                 const std::string& file_name,
+                                                int64_t start_time, 
                                                 double duration,
                                                 uint64_t start_byte_offset,
                                                 uint64_t segment_file_size,
@@ -421,12 +422,13 @@ bool SimpleHlsNotifier::NotifyNewPartialSegment(uint32_t stream_id,
   }
 
   auto& media_playlist = stream_iterator->second->media_playlist;
-  const std::string& segment_url =
+  const std::string& part_uri =
       GenerateSegmentUrl(file_name, hls_params().base_url,
                          master_playlist_dir_, media_playlist->file_name());
 
   double duration_seconds = duration;
-  media_playlist->AddPartialSegment(segment_url,
+  media_playlist->AddPartialSegment(part_uri,
+                                    start_time,
                                     duration_seconds,
                                     is_independent,
                                     start_byte_offset,
