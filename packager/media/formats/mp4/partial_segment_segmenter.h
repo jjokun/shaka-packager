@@ -21,7 +21,6 @@ struct SegmentType;
 struct ChunkData {
   std::unique_ptr<BufferWriter> buffer;
   uint64_t duration = 0;
-  bool is_independent = false;
 };
 
 /// Segmenter for LL-HLS profiles.
@@ -58,6 +57,11 @@ class PartialSegmentSegmenter : public Segmenter {
   Status WriteChunk();
   Status WriteInitialChunk(int64_t segment_number);
   Status FinalizeSegment();
+  Status FinalizePartialSegment(const std::string& partial_name,
+                                uint64_t earliest_presentation_time,
+                                double duration,
+                                uint64_t size,
+                                bool is_independent);
 
   uint64_t GetSegmentDuration();
 
@@ -66,22 +70,22 @@ class PartialSegmentSegmenter : public Segmenter {
   uint32_t num_partials_in_seg_;
   bool is_initial_chunk_in_seg_ = true;
   bool ll_hls_m3u8_values_initialized_ = false;
-  std::unique_ptr<File, FileCloser> segment_file_;
+  std::unique_ptr<File, FileCloser> partial_file_;
   std::string file_name_;
-  std::vector<std::string> partial_files_;  // 현재 세그먼트의 partial 파일들
-  uint64_t total_partial_size_ = 0;         // 현재 세그먼트의 전체 크기
+  std::string partial_name_;
+  uint64_t total_partial_size_ = 0;         // Total size of the current partial segment.
+  uint64_t total_segment_size_ = 0;      // Total size of the current segment.
   size_t segment_size_ = 0u;
   uint32_t num_chunks_in_seg_ = 0;  // Number of chunks in the current segment.
+  bool is_independent_ = false;  // Is the current partial segment independent.
 
   std::vector<ChunkData> buffered_chunks_;
   double total_buffered_duration_ = 0;
 
-  Status WritePartialSegment();
   Status WriteSegmentFile();
   
   uint64_t GetChunkDuration();
 
-  void CleanupPartialSegments();
   void ResetSegmentState();
 
   DISALLOW_COPY_AND_ASSIGN(PartialSegmentSegmenter);

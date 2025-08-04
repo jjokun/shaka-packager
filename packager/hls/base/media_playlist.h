@@ -30,6 +30,7 @@ class HlsEntry {
   enum class EntryType {    
     kExtInf,
     kExtPart,
+    kExtPartHint,
     kExtKey,
     kExtDiscontinuity,
     kExtPlacementOpportunity,
@@ -192,7 +193,7 @@ class MediaPlaylist {
   /// https://support.google.com/dfp_premium/answer/7295798?hl=en.
   virtual void AddPlacementOpportunity();
 
-  // ±¤°í ?????? ????? Ãß???
+  // ï¿½ï¿½ï¿½ï¿½ ?????? ????? ï¿½ï¿½???
   virtual void AddCueEvent(uint32_t timestamp,
                            double break_duration,
                            bool out_of_network);

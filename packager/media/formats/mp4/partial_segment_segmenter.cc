@@ -118,6 +118,24 @@ Status PartialSegmentSegmenter::WriteInitialChunk(int64_t segment_number) {
                                num_segments_, options().bandwidth);
   }
 
+  if (options().segment_template.empty()) {
+    partial_name_ = GetPartialSegmentName(
+        options().output_file_name.c_str(), sidx()->earliest_presentation_time,
+        num_segments_, options().bandwidth, num_partials_in_seg_); 
+  } else {    
+    // Generate partial segment file name
+    partial_name_ = GetPartialSegmentName(
+        options().segment_template, sidx()->earliest_presentation_time,
+        num_segments_, options().bandwidth, num_partials_in_seg_); 
+  }
+
+  // Create the segment file
+  partial_file_.reset(File::Open(partial_name_.c_str(), "a"));
+  if (!partial_file_) {
+    return Status(error::FILE_FAILURE,
+                  "Cannot open segment file: " + partial_name_);
+  }
+
   // Initialize first partial segment
   ChunkData chunk;
   chunk.buffer.reset(new BufferWriter);
@@ -138,18 +156,32 @@ Status PartialSegmentSegmenter::WriteInitialChunk(int64_t segment_number) {
 
   chunk.buffer->AppendBuffer(*fragment_buffer());
   chunk.duration = GetChunkDuration();
-  chunk.is_independent = !key_frame_infos().empty();
+  is_independent_ |= !key_frame_infos().empty();
+  total_partial_size_ += chunk.buffer->Size();
 
   total_buffered_duration_ += static_cast<double>(chunk.duration) / 
                              static_cast<double>(GetReferenceTimeScale());
+
+  std::unique_ptr<BufferWriter> buffer(new BufferWriter());
+  buffer->AppendBuffer(*chunk.buffer);   
+  RETURN_IF_ERROR(buffer->WriteToFile(partial_file_.get()));
   buffered_chunks_.push_back(std::move(chunk));
-  fragment_buffer()->Clear();
+
+  // Update progress
+  UpdateProgress(total_buffered_duration_);
 
   if (total_buffered_duration_ >= options().hls_params.partial_segment_duration) {
-    RETURN_IF_ERROR(WritePartialSegment());
+    FinalizePartialSegment(
+        GetPartialSegmentName(options().segment_template,
+                              sidx()->earliest_presentation_time,
+                              num_segments_, options().bandwidth,
+                              num_partials_in_seg_),
+        sidx()->earliest_presentation_time, total_buffered_duration_,
+        total_partial_size_, is_independent_);
   }
 
   is_initial_chunk_in_seg_ = false;
+  fragment_buffer()->Clear();
   
   return Status::OK;
 }
@@ -163,83 +195,61 @@ Status PartialSegmentSegmenter::WriteChunk() {
   chunk.buffer.reset(new BufferWriter);
   chunk.buffer->AppendBuffer(*fragment_buffer());
   chunk.duration = GetChunkDuration();
-  chunk.is_independent = !key_frame_infos().empty();
+  is_independent_ |= !key_frame_infos().empty();
+  total_partial_size_ += chunk.buffer->Size();
 
   total_buffered_duration_ += static_cast<double>(chunk.duration) / 
                              static_cast<double>(GetReferenceTimeScale());
-  buffered_chunks_.push_back(std::move(chunk));
-  fragment_buffer()->Clear();
-
-  // Create partial segment when duration threshold is reached
-  if (total_buffered_duration_ >= options().hls_params.partial_segment_duration) {
-    RETURN_IF_ERROR(WritePartialSegment());
-  }
-
-  return Status::OK;
-}
-
-Status PartialSegmentSegmenter::WritePartialSegment() {
-  if (buffered_chunks_.empty()) {
-    return Status::OK;
-  }
-
-  // Generate partial segment file name
-  std::string partial_name = GetPartialSegmentName(
-      options().segment_template, sidx()->earliest_presentation_time,
-      num_segments_, options().bandwidth, num_partials_in_seg_); 
+  RETURN_IF_ERROR(fragment_buffer()->WriteToFile(partial_file_.get()));                             
+  buffered_chunks_.push_back(std::move(chunk));  
   
-  // Create partial segment file
-  std::unique_ptr<File, FileCloser> partial_file(
-      File::Open(partial_name.c_str(), "a"));
-  if (!partial_file) {
-    return Status(error::FILE_FAILURE,
-                  "Cannot create partial segment: " + partial_name);
-  }
-
-  // Write all buffered chunks
-  uint64_t partial_size = 0;
-  bool is_independent = false;
-  for (const auto& chunk : buffered_chunks_) {
-    partial_size += chunk.buffer->Size();
-    is_independent |= chunk.is_independent;
-    RETURN_IF_ERROR(chunk.buffer->WriteToFile(partial_file.get()));    
-  }
-
-  if (!partial_file.release()->Close()) {
-    return Status(error::FILE_FAILURE,
-                  "Cannot close partial segment: " + partial_name);
-  }
-
-  // Update state
-  partial_files_.push_back(partial_name);
-  total_partial_size_ += partial_size;
-  num_partials_in_seg_++;
-
   // Update progress
   UpdateProgress(total_buffered_duration_);
 
-  if (muxer_listener()) {
-    muxer_listener()->OnNewPartialSegment(partial_name,
-                                          sidx()->earliest_presentation_time,
-                                          total_buffered_duration_,
-                                          partial_size,
-                                          is_independent);
+  // Create partial segment when duration threshold is reached
+  if (total_buffered_duration_ >= options().hls_params.partial_segment_duration) {
+    FinalizePartialSegment(
+        GetPartialSegmentName(options().segment_template,
+                              sidx()->earliest_presentation_time,
+                              num_segments_, options().bandwidth,
+                              num_partials_in_seg_),
+        sidx()->earliest_presentation_time, total_buffered_duration_,
+        total_partial_size_, is_independent_);
   }
-
-  // Reset buffer state
-  buffered_chunks_.clear();
-  key_frame_infos_clear();
-  total_buffered_duration_ = 0;
 
   return Status::OK;
 }
 
-Status PartialSegmentSegmenter::FinalizeSegment() {
-  // Write remaining chunks as partial segment
-  if (!buffered_chunks_.empty()) {
-    RETURN_IF_ERROR(WritePartialSegment());
+Status PartialSegmentSegmenter::FinalizePartialSegment(const std::string& partial_name,
+                                                       uint64_t earliest_presentation_time,
+                                                       double duration,
+                                                       uint64_t size,
+                                                       bool is_independent) {
+  if (!partial_file_.release()->Close()) {
+    return Status(
+        error::FILE_FAILURE,
+        "Cannot close file " + partial_name_ +
+            ", possibly file permission issue or running out of disk space.");
+  }
+  
+  if (muxer_listener()) {
+    muxer_listener()->OnNewPartialSegment(partial_name,
+                                          earliest_presentation_time,
+                                          duration, size, is_independent);
   }
 
+  // Reset buffer state
+  key_frame_infos_clear();
+  is_initial_chunk_in_seg_ = true;
+  total_buffered_duration_ = 0;
+  total_partial_size_ = 0;
+  is_independent_ = false;
+  num_partials_in_seg_++;
+
+  return Status::OK;
+} 
+
+Status PartialSegmentSegmenter::FinalizeSegment() {
   // Create complete segment from partials
   RETURN_IF_ERROR(WriteSegmentFile());
 
@@ -248,7 +258,7 @@ Status PartialSegmentSegmenter::FinalizeSegment() {
         file_name_,
         sidx()->earliest_presentation_time,
         GetSegmentDuration(),
-        total_partial_size_,
+        total_segment_size_,
         num_segments_);
   }
 
@@ -270,31 +280,14 @@ Status PartialSegmentSegmenter::WriteSegmentFile() {
   }
 
   // Copy all partial segments
-  for (const auto& partial : partial_files_) {
-    std::unique_ptr<File, FileCloser> partial_file(
-        File::Open(partial.c_str(), "r"));
-    if (!partial_file) {
-      return Status(error::FILE_FAILURE,
-                    "Cannot open partial file: " + partial);
-    }
-
-    std::vector<uint8_t> buffer(1024 * 1024);  // 1MB buffer
-    while (true) {
-      int64_t bytes_read = partial_file->Read(buffer.data(), buffer.size());
-      if (bytes_read < 0) {
-        return Status(error::FILE_FAILURE,
-                      "Error reading partial file: " + partial);
-      }
-      if (bytes_read == 0) break;
-
-      if (segment_file->Write(buffer.data(), bytes_read) != bytes_read) {
-        return Status(error::FILE_FAILURE,
-                      "Error writing to segment file: " + file_name_);
-      }
-    }
-    partial_file.release()->Close();
+  for (const auto& chunk : buffered_chunks_) {
+    total_segment_size_ += chunk.buffer->Size();
+    RETURN_IF_ERROR(chunk.buffer->WriteToFile(segment_file.get()));   
   }
-  segment_file.release()->Close();
+  if (!segment_file.release()->Close()) {
+    return Status(error::FILE_FAILURE,
+                  "Cannot close segment: " + file_name_);
+  }
 
   return Status::OK;
 }
@@ -319,19 +312,14 @@ uint64_t PartialSegmentSegmenter::GetChunkDuration() {
   return sidx()->references.back().subsegment_duration;
 }
 
-void PartialSegmentSegmenter::CleanupPartialSegments() {
-  for (const auto& partial : partial_files_) {
-    File::Delete(partial.c_str());
-  }
-}
-
 void PartialSegmentSegmenter::ResetSegmentState() {
   is_initial_chunk_in_seg_ = true;
   num_partials_in_seg_ = 0;
   total_partial_size_ = 0;
-  partial_files_.clear();
+  total_segment_size_ = 0;
   buffered_chunks_.clear();
   total_buffered_duration_ = 0;
+  is_independent_ = false;
 }
 
 }  // namespace mp4

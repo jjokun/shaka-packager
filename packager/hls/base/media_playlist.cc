@@ -310,8 +310,8 @@ std::string SegmentInfoEntry::ToString() {
 
 class PartialSegmentInfoEntry : public HlsEntry {
  public:
+  // part_uri: 부분 세그먼트의 URI
   // duration_seconds: 부분 세그먼트의 지속 시간 (초 단위)
-  // uri: 부분 세그먼트의 URI
   // independent: 독립적인 디코딩이 가능한지 여부 (선택적)
   // byte_range_start: 바이트 범위 시작 위치 (선택적)
   // byte_range_length: 바이트 범위 길이 (선택적)
@@ -366,6 +366,35 @@ std::string PartialSegmentInfoEntry::ToString() {
   if (independent_) {
     tag.AddBool("INDEPENDENT", true);
   }
+
+  return out;
+}
+
+class PartialHintInfoEntry : public HlsEntry {
+ public:
+  // part_uri: 부분 세그먼트의 URI
+  PartialHintInfoEntry(const std::string& part_uri);
+
+  std::string ToString() override;
+
+ private:
+  PartialHintInfoEntry(const PartialHintInfoEntry&) = delete;
+  PartialHintInfoEntry& operator=(const PartialHintInfoEntry&) = delete;
+
+  const std::string part_uri_;
+};
+
+PartialHintInfoEntry::PartialHintInfoEntry(const std::string& part_uri)
+    : HlsEntry(HlsEntry::EntryType::kExtPartHint),
+      part_uri_(part_uri) {}
+
+std::string PartialHintInfoEntry::ToString() {
+  std::string out;
+  
+  Tag tag("#EXT-X-PRELOAD-HINT", &out);
+  
+  tag.AddString("TYPE", "PART");
+  tag.AddQuotedString("URI", part_uri_);
 
   return out;
 }
@@ -622,6 +651,20 @@ void MediaPlaylist::AddSegment(const std::string& file_name,
                              size);
 }
 
+void MediaPlaylist::AddPartialSegment(const std::string& part_uri,
+                                      int64_t start_time, 
+                                      double duration_seconds,
+                                      bool independent,
+                                      std::optional<uint64_t> byte_range_start,
+                                      std::optional<uint64_t> byte_range_length) {
+  entries_.emplace_back(new PartialSegmentInfoEntry(part_uri,
+                                                    start_time,
+                                                    duration_seconds,
+                                                    independent,
+                                                    byte_range_start,
+                                                    byte_range_length));
+}
+
 void MediaPlaylist::AddKeyFrame(int64_t timestamp,
                                 uint64_t start_byte_offset,
                                 uint64_t size) {
@@ -839,20 +882,6 @@ void MediaPlaylist::AddSegmentInfoEntry(const std::string& segment_file_name,
       segment_file_name, start_time, segment_duration_seconds, use_byte_range_,
       start_byte_offset, size, previous_segment_end_offset_));
   previous_segment_end_offset_ = start_byte_offset + size - 1;
-}
-
-void MediaPlaylist::AddPartialSegment(const std::string& part_uri,
-                                      int64_t start_time, 
-                                      double duration_seconds,
-                                      bool independent,
-                                      std::optional<uint64_t> byte_range_start,
-                                      std::optional<uint64_t> byte_range_length) {
-  entries_.emplace_back(new PartialSegmentInfoEntry(part_uri,
-                                                    start_time,
-                                                    duration_seconds,
-                                                    independent,
-                                                    byte_range_start,
-                                                    byte_range_length));
 }
 
 void MediaPlaylist::AdjustLastSegmentInfoEntryDuration(int64_t next_timestamp) {
