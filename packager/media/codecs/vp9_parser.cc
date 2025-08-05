@@ -195,8 +195,8 @@ void SetColorAttributes(uint8_t bit_depth,
       break;
     case VPX_COLOR_SPACE_BT_2020:
       codec_config->set_color_primaries(AVCOL_PRI_BT2020);
-      // VP9 does not specify if it is in the form of â€œconstant luminanceâ€ or
-      // â€œnon-constant luminanceâ€. As such, application should rely on the
+      // VP9 does not specify if it is in the form of ¡°constant luminance¡± or
+      // ¡°non-constant luminance¡±. As such, application should rely on the
       // signaling outside of VP9 bitstream. If there is no such signaling,
       // application may assume non-constant luminance for BT.2020.
       codec_config->set_matrix_coefficients(AVCOL_SPC_BT2020_NCL);

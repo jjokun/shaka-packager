@@ -78,7 +78,8 @@ class HlsNotifyMuxerListener : public MuxerListener {
                            int64_t start_time,
                            double duration,
                            uint64_t segment_file_size,
-                           bool is_independent) override;                    
+                           bool is_independent) override;
+  void OnNewPartialSegmentHint(const std::string& part_uri) override;                         
   void OnKeyFrame(int64_t timestamp,
                   uint64_t start_byte_offset,
                   uint64_t size) override;

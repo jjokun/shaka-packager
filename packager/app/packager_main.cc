@@ -548,10 +548,8 @@ std::optional<PackagingParams> GetPackagingParams() {
   hls_params.start_time_offset = absl::GetFlag(FLAGS_hls_start_time_offset);
   hls_params.create_session_keys = absl::GetFlag(FLAGS_create_session_keys);
 
-  // LL-HLS 관련 파라미터 설정 추가
   hls_params.low_latency_hls_mode = absl::GetFlag(FLAGS_low_latency_hls_mode);
   if (hls_params.low_latency_hls_mode) {
-    // LL-HLS 모드가 활성화된 경우 추가 검증
     if (hls_params.playlist_type != HlsPlaylistType::kLive) {
       LOG(ERROR) << "Low-Latency HLS mode is only supported with LIVE playlist type";
       return std::nullopt;
@@ -569,6 +567,10 @@ std::optional<PackagingParams> GetPackagingParams() {
       hls_params.server_can_block_reload = absl::GetFlag(FLAGS_hls_server_can_block_reload);
       hls_params.part_hold_back = absl::GetFlag(FLAGS_hls_part_hold_back);
       hls_params.can_skip_until = absl::GetFlag(FLAGS_hls_can_skip_until);
+    } else {
+      hls_params.server_can_block_reload = false;
+      hls_params.part_hold_back = 0;
+      hls_params.can_skip_until = 0;
     }
     
     hls_params.enable_preload_hints = absl::GetFlag(FLAGS_hls_preload_hints);

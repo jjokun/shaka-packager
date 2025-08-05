@@ -73,7 +73,7 @@ struct HlsParams {
   /// Create EXT-X-SESSION-KEY in master playlist
   bool create_session_keys;
 
-    // Low-Latency HLS related parameters
+  // Low-Latency HLS related parameters
   bool low_latency_hls_mode = false;
   double partial_segment_duration = 0.5;
   bool enable_preload_hints = true;

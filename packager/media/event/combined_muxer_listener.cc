@@ -90,6 +90,12 @@ void CombinedMuxerListener::OnNewPartialSegment(const std::string& file_name,
   }
 }
 
+void CombinedMuxerListener::OnNewPartialSegmentHint(const std::string& part_uri) {
+  for (auto& listener : muxer_listeners_) {
+    listener->OnNewPartialSegmentHint(part_uri);
+  }
+}
+
 void CombinedMuxerListener::OnCompletedSegment(int64_t duration,
                                                uint64_t segment_file_size) {
   for (auto& listener : muxer_listeners_) {

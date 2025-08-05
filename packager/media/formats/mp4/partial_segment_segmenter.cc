@@ -33,8 +33,8 @@ PartialSegmentSegmenter::PartialSegmentSegmenter(
     std::unique_ptr<Movie> moov)
     : Segmenter(options, std::move(ftyp), std::move(moov)),
       styp_(new SegmentType),
-      num_segments_(0),
-      num_partials_in_seg_(0) {
+      num_segments_(1),
+      num_partials_in_seg_(1) {
   // Use the same brands for styp as ftyp.
   styp_->major_brand = Segmenter::ftyp()->major_brand;
   styp_->compatible_brands = Segmenter::ftyp()->compatible_brands;
@@ -83,6 +83,25 @@ Status PartialSegmentSegmenter::DoFinalizeChunk(int64_t segment_number) {
   return WriteChunk();
 }
 
+Status PartialSegmentSegmenter::OpenPartialSegmentFile() {
+  // Generate partial segment file name
+  partial_name_ = GetPartialSegmentName(
+      options().segment_template, sidx()->earliest_presentation_time,
+      num_segments_, options().bandwidth, num_partials_in_seg_); 
+
+  // Create the segment file
+  partial_file_.reset(File::Open(partial_name_.c_str(), "a"));
+  if (!partial_file_) {
+    return Status(error::FILE_FAILURE,
+                  "Cannot open segment file: " + partial_name_);
+  }
+
+  is_initial_partial_in_seg_ = false;
+
+  return Status::OK;
+}
+
+
 Status PartialSegmentSegmenter::WriteInitSegment() {
   DCHECK(ftyp());
   DCHECK(moov());
@@ -118,24 +137,11 @@ Status PartialSegmentSegmenter::WriteInitialChunk(int64_t segment_number) {
                                num_segments_, options().bandwidth);
   }
 
-  if (options().segment_template.empty()) {
-    partial_name_ = GetPartialSegmentName(
-        options().output_file_name.c_str(), sidx()->earliest_presentation_time,
-        num_segments_, options().bandwidth, num_partials_in_seg_); 
-  } else {    
-    // Generate partial segment file name
-    partial_name_ = GetPartialSegmentName(
-        options().segment_template, sidx()->earliest_presentation_time,
-        num_segments_, options().bandwidth, num_partials_in_seg_); 
+  OpenPartialSegmentFile();
+  if (muxer_listener()) {
+    muxer_listener()->OnNewPartialSegmentHint(partial_name_);
   }
-
-  // Create the segment file
-  partial_file_.reset(File::Open(partial_name_.c_str(), "a"));
-  if (!partial_file_) {
-    return Status(error::FILE_FAILURE,
-                  "Cannot open segment file: " + partial_name_);
-  }
-
+  
   // Initialize first partial segment
   ChunkData chunk;
   chunk.buffer.reset(new BufferWriter);
@@ -163,7 +169,7 @@ Status PartialSegmentSegmenter::WriteInitialChunk(int64_t segment_number) {
                              static_cast<double>(GetReferenceTimeScale());
 
   std::unique_ptr<BufferWriter> buffer(new BufferWriter());
-  buffer->AppendBuffer(*chunk.buffer);   
+  buffer->AppendBuffer(*chunk.buffer);
   RETURN_IF_ERROR(buffer->WriteToFile(partial_file_.get()));
   buffered_chunks_.push_back(std::move(chunk));
 
@@ -171,13 +177,7 @@ Status PartialSegmentSegmenter::WriteInitialChunk(int64_t segment_number) {
   UpdateProgress(total_buffered_duration_);
 
   if (total_buffered_duration_ >= options().hls_params.partial_segment_duration) {
-    FinalizePartialSegment(
-        GetPartialSegmentName(options().segment_template,
-                              sidx()->earliest_presentation_time,
-                              num_segments_, options().bandwidth,
-                              num_partials_in_seg_),
-        sidx()->earliest_presentation_time, total_buffered_duration_,
-        total_partial_size_, is_independent_);
+    FinalizePartialSegment();
   }
 
   is_initial_chunk_in_seg_ = false;
@@ -189,6 +189,13 @@ Status PartialSegmentSegmenter::WriteInitialChunk(int64_t segment_number) {
 Status PartialSegmentSegmenter::WriteChunk() {
   DCHECK(sidx());
   DCHECK(fragment_buffer());
+
+  if (is_initial_partial_in_seg_) {
+    OpenPartialSegmentFile();
+    if (muxer_listener()) {
+      muxer_listener()->OnNewPartialSegmentHint(partial_name_);
+    }
+  }
 
   // Buffer chunk
   ChunkData chunk;
@@ -208,23 +215,13 @@ Status PartialSegmentSegmenter::WriteChunk() {
 
   // Create partial segment when duration threshold is reached
   if (total_buffered_duration_ >= options().hls_params.partial_segment_duration) {
-    FinalizePartialSegment(
-        GetPartialSegmentName(options().segment_template,
-                              sidx()->earliest_presentation_time,
-                              num_segments_, options().bandwidth,
-                              num_partials_in_seg_),
-        sidx()->earliest_presentation_time, total_buffered_duration_,
-        total_partial_size_, is_independent_);
+    FinalizePartialSegment();
   }
 
   return Status::OK;
 }
 
-Status PartialSegmentSegmenter::FinalizePartialSegment(const std::string& partial_name,
-                                                       uint64_t earliest_presentation_time,
-                                                       double duration,
-                                                       uint64_t size,
-                                                       bool is_independent) {
+Status PartialSegmentSegmenter::FinalizePartialSegment() {
   if (!partial_file_.release()->Close()) {
     return Status(
         error::FILE_FAILURE,
@@ -233,23 +230,26 @@ Status PartialSegmentSegmenter::FinalizePartialSegment(const std::string& partia
   }
   
   if (muxer_listener()) {
-    muxer_listener()->OnNewPartialSegment(partial_name,
-                                          earliest_presentation_time,
-                                          duration, size, is_independent);
+    muxer_listener()->OnNewPartialSegment(partial_name_,
+                                          sidx()->earliest_presentation_time,
+                                          total_buffered_duration_, 
+                                          total_partial_size_, 
+                                          is_independent_);
   }
 
   // Reset buffer state
   key_frame_infos_clear();
-  is_initial_chunk_in_seg_ = true;
-  total_buffered_duration_ = 0;
-  total_partial_size_ = 0;
-  is_independent_ = false;
+  ResetPartialState();
   num_partials_in_seg_++;
 
   return Status::OK;
 } 
 
 Status PartialSegmentSegmenter::FinalizeSegment() {
+  if (partial_file_) {
+    FinalizePartialSegment();
+  }
+  
   // Create complete segment from partials
   RETURN_IF_ERROR(WriteSegmentFile());
 
@@ -312,14 +312,19 @@ uint64_t PartialSegmentSegmenter::GetChunkDuration() {
   return sidx()->references.back().subsegment_duration;
 }
 
-void PartialSegmentSegmenter::ResetSegmentState() {
+void PartialSegmentSegmenter::ResetPartialState() {
   is_initial_chunk_in_seg_ = true;
-  num_partials_in_seg_ = 0;
+  is_initial_partial_in_seg_ = true;
+  total_buffered_duration_ = 0;
   total_partial_size_ = 0;
+  is_independent_ = false;
+}
+
+void PartialSegmentSegmenter::ResetSegmentState() {
+  ResetPartialState();
+  num_partials_in_seg_ = 1;
   total_segment_size_ = 0;
   buffered_chunks_.clear();
-  total_buffered_duration_ = 0;
-  is_independent_ = false;
 }
 
 }  // namespace mp4

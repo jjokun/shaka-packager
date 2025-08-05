@@ -57,11 +57,7 @@ class PartialSegmentSegmenter : public Segmenter {
   Status WriteChunk();
   Status WriteInitialChunk(int64_t segment_number);
   Status FinalizeSegment();
-  Status FinalizePartialSegment(const std::string& partial_name,
-                                uint64_t earliest_presentation_time,
-                                double duration,
-                                uint64_t size,
-                                bool is_independent);
+  Status FinalizePartialSegment();
 
   uint64_t GetSegmentDuration();
 
@@ -69,6 +65,7 @@ class PartialSegmentSegmenter : public Segmenter {
   uint32_t num_segments_;
   uint32_t num_partials_in_seg_;
   bool is_initial_chunk_in_seg_ = true;
+  bool is_initial_partial_in_seg_ = true;
   bool ll_hls_m3u8_values_initialized_ = false;
   std::unique_ptr<File, FileCloser> partial_file_;
   std::string file_name_;
@@ -82,10 +79,12 @@ class PartialSegmentSegmenter : public Segmenter {
   std::vector<ChunkData> buffered_chunks_;
   double total_buffered_duration_ = 0;
 
+  Status OpenPartialSegmentFile();
   Status WriteSegmentFile();
   
   uint64_t GetChunkDuration();
 
+  void ResetPartialState();
   void ResetSegmentState();
 
   DISALLOW_COPY_AND_ASSIGN(PartialSegmentSegmenter);

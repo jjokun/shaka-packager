@@ -154,7 +154,11 @@ class MuxerListener {
                                    double duration,
                                    uint64_t segment_file_size,
                                    bool is_independent) {}
-                              
+
+  /// Called when a started partial segment write for partial segment hint.
+  /// @param part_uri is the URI of the partial segment hint.
+  virtual void OnNewPartialSegmentHint(const std::string& part_uri) {}
+  
   /// Called when a segment has been muxed and the entire file has been written.
   /// For Low Latency only. Note that it should be called after OnNewSegment.
   /// When the low latency segment is initally added to the manifest, the size

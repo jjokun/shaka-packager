@@ -65,6 +65,8 @@ class SimpleHlsNotifier : public HlsNotifier {
                                uint64_t start_byte_offset,
                                uint64_t segment_file_size,
                                bool is_independent) override;
+  bool NotifyNewPartialSegmentHint(uint32_t stream_id,
+                                   const std::string& part_uri) override;                               
   bool NotifyKeyFrame(uint32_t stream_id,
                       int64_t timestamp,
                       uint64_t start_byte_offset,
@@ -82,6 +84,10 @@ class SimpleHlsNotifier : public HlsNotifier {
 
   bool IsLowLatencyMode() const override {
     return hls_params().low_latency_hls_mode;
+  }
+
+  bool IsPartialSegmentHintEnabled() const override {
+    return hls_params().enable_preload_hints;
   }
 
   bool Flush() override;

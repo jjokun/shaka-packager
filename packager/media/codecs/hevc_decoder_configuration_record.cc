@@ -51,7 +51,7 @@ std::string TrimLeadingZeros(const std::string& str) {
 // Encode the 32 bits input, but in reverse bit order, i.e. bit [31] as the most
 // significant bit, followed by, bit [30], and down to bit [0] as the least
 // significant bit, where bits [i] for i in the range of 0 to 31, inclusive, are
-// specified in ISO/IEC 23008‐2, encoded in hexadecimal (leading zeroes may be
+// specified in ISO/IEC 23008?2, encoded in hexadecimal (leading zeroes may be
 // omitted).
 std::string ReverseBitsAndHexEncode(uint32_t x) {
   x = ((x & 0x55555555) << 1) | ((x & 0xAAAAAAAA) >> 1);

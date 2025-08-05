@@ -64,7 +64,7 @@ bool Scte35SectionParser::ParsePsiSection(BitReader* bit_reader) {
             RCHECK(bit_reader->ReadBits(4, &reserved));
             out_of_network = out_of_network_indicator;
 
-            // splice_time() íŒŒì‹±
+            // splice_time() ÆÄ½Ì
             if (program_splice_flag && !splice_immediate_flag) {
                 int time_specified_flag = 0;
                 RCHECK(bit_reader->ReadBits(1, &time_specified_flag));
@@ -77,7 +77,7 @@ bool Scte35SectionParser::ParsePsiSection(BitReader* bit_reader) {
                 }
             }
 
-            // (program_splice_flag, splice_immediate_flag ë“±ì€ í•„ìš”ì‹œ ì¶”ê°€ íŒŒì‹±)
+            // (program_splice_flag, splice_immediate_flag µîÀº ÇÊ¿ä½Ã Ãß°¡ ÆÄ½Ì)
             if (duration_flag) {
                 int auto_return = 0;
                 RCHECK(bit_reader->ReadBits(1, &auto_return));
@@ -98,7 +98,7 @@ bool Scte35SectionParser::ParsePsiSection(BitReader* bit_reader) {
         int crc32 = 0;
         RCHECK(bit_reader->ReadBits(32, &crc32));
 
-        // ì½œë°± í˜¸ì¶œ
+        // Äİ¹é È£Ãâ
         if (new_cue_event_cb_) {
             double pts_to_use = has_splice_time ? splice_time : last_pts_;            
             
@@ -107,7 +107,7 @@ bool Scte35SectionParser::ParsePsiSection(BitReader* bit_reader) {
             cue_event->time_in_seconds = pts_to_use;
             cue_event->break_duration = break_duration;
             cue_event->out_of_network = out_of_network;
-            // SCTE-35 ì •ë³´ë¥¼ ë¬¸ìì—´ë¡œ ì¡°í•©
+            // SCTE-35 Á¤º¸¸¦ ¹®ÀÚ¿­·Î Á¶ÇÕ
             std::ostringstream oss;
             oss << "CueEvent {";
             oss << "pts=" << static_cast<uint64_t>(pts_to_use) << ", ";
@@ -117,11 +117,11 @@ bool Scte35SectionParser::ParsePsiSection(BitReader* bit_reader) {
             oss << "cancel=" << (cancel ? "true" : "false") << "}";
             cue_event->cue_data = oss.str();
             
-            // ì½œë°± ì‚¬ìš©
+            // Äİ¹é »ç¿ë
             new_cue_event_cb_(cue_event);            
         }
     } else {
-        // splice_command_typeì´ 0x05ê°€ ì•„ë‹ˆë©´ payload skip
+        // splice_command_typeÀÌ 0x05°¡ ¾Æ´Ï¸é payload skip
         LOG(INFO) << "SCTE-35 splice_command skip...";
     }
     return true;

@@ -81,7 +81,13 @@ class HlsNotifier {
                                        uint64_t segment_file_size,
                                        bool is_independent) = 0;
 
-  virtual bool IsLowLatencyMode() const = 0;                                
+  /// @param stream_id is the value set by NotifyNewPartialSegmentHint().
+  /// @param part_uri is the URI of the partial segment.
+  virtual bool NotifyNewPartialSegmentHint(uint32_t stream_id,
+                                           const std::string& part_uri) = 0;                                          
+                                           
+  virtual bool IsLowLatencyMode() const = 0;   
+  virtual bool IsPartialSegmentHintEnabled() const = 0;                             
 
   /// Called on every key frame. For Video only.
   /// @param stream_id is the value set by NotifyNewStream().

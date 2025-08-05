@@ -24,7 +24,7 @@ static const uint32_t kSampleRates[] = {96000, 88200, 64000, 48000, 44100,
 // Channel Configuration table, from ISO 14496-3 Table 1.17
 const uint8_t kChannelConfigs[] = {0, 1, 2, 3, 4, 5, 6, 8};
 
-// ISO 14496-3 Table 4.2 – Syntax of program_config_element()
+// ISO 14496-3 Table 4.2 ? Syntax of program_config_element()
 // program_config_element()
 //     ...
 //     element_is_cpe[i]; 1 bslbf
@@ -305,7 +305,7 @@ bool AACAudioSpecificConfig::ParseGASpecificConfig(BitReader* bit_reader) {
   return true;
 }
 
-// ISO 14496-3 Table 4.2 – Syntax of program_config_element()
+// ISO 14496-3 Table 4.2 ? Syntax of program_config_element()
 // program_config_element()
 // {
 //   element_instance_tag; 4 uimsbf

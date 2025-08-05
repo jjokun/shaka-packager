@@ -147,7 +147,7 @@ class MediaPlaylist {
                           uint64_t size);
 
   /// Add a partial segment to the playlist.
-  /// @param uri is the URI of the partial segment.
+  /// @param part_uri is the URI of the partial segment.
   /// @param duration_seconds is the duration of the partial segment in seconds.
   /// @param independent is true if the partial segment is independent.
   /// @param byte_range_start is the start of the byte range, or nullopt if
@@ -159,7 +159,11 @@ class MediaPlaylist {
                                  double duration_seconds,
                                  bool independent,
                                  std::optional<uint64_t> byte_range_start,
-                                 std::optional<uint64_t> byte_range_length);                       
+                                 std::optional<uint64_t> byte_range_length); 
+  
+  /// Add a partial segment hit to the playlist.
+  /// @param part_uri is the URI of the partial segment hint.
+  virtual void AddPartialSegmentHint(const std::string& part_uri);
 
   /// Keyframes must be added in order. It is also called before the containing
   /// segment being called.

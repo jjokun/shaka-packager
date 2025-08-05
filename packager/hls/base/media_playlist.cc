@@ -657,12 +657,22 @@ void MediaPlaylist::AddPartialSegment(const std::string& part_uri,
                                       bool independent,
                                       std::optional<uint64_t> byte_range_start,
                                       std::optional<uint64_t> byte_range_length) {
+
+  if (!entries_.empty() && entries_.back().get()->type() == HlsEntry::EntryType::kExtPartHint)
+    entries_.pop_back(); // Remove the last hint entry if it exists.
+
   entries_.emplace_back(new PartialSegmentInfoEntry(part_uri,
                                                     start_time,
                                                     duration_seconds,
                                                     independent,
                                                     byte_range_start,
                                                     byte_range_length));
+}
+
+void MediaPlaylist::AddPartialSegmentHint(const std::string& part_uri) {
+  if (!entries_.empty()) {
+    entries_.emplace_back(new PartialHintInfoEntry(part_uri));
+  }
 }
 
 void MediaPlaylist::AddKeyFrame(int64_t timestamp,
@@ -958,9 +968,13 @@ void MediaPlaylist::SlideWindow() {
       ext_x_parts.push_back(std::move(*last));      
       partial_segments_to_be_removed.push_back(media::GetPartialSegmentName(
           media_info_.segment_template(), partial_info.start_time(),
-          media_sequence_number_, media_info_.bandwidth(), media_partial_number_));
+          media_sequence_number_ + 1, media_info_.bandwidth(), media_partial_number_ + 1));
       media_partial_number_++;
-    } else {
+    } else if (entry_type == HlsEntry::EntryType::kExtPartHint ||
+               entry_type == HlsEntry::EntryType::kExtCueOut ||
+               entry_type == HlsEntry::EntryType::kExtCueIn) {
+      // Do nothing for PART-HINT, CUE-OUT and CUE-IN.
+    }  else {
       DCHECK_EQ(static_cast<int>(entry_type),
                 static_cast<int>(HlsEntry::EntryType::kExtInf));
 
@@ -1002,7 +1016,7 @@ void MediaPlaylist::RemoveOldSegment(int64_t start_time,
 
   RemoveSegmentInfo remove_segment_info;
   remove_segment_info.segment_to_be_removed = media::GetSegmentName(
-      media_info_.segment_template(), start_time, media_sequence_number_,
+      media_info_.segment_template(), start_time, media_sequence_number_ + 1,
       media_info_.bandwidth());
   remove_segment_info.partial_segments_to_be_removed.insert(
       remove_segment_info.partial_segments_to_be_removed.end(),
