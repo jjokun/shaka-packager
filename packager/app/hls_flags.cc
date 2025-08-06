@@ -81,11 +81,11 @@ ABSL_FLAG(bool,
           "until new segments are available.");
 ABSL_FLAG(double,
           hls_part_hold_back,
-          0.5,
+          1.5,
           "The minimum distance from the end of the Playlist at which "
           "clients should load available Partial Segments (in seconds).");
 ABSL_FLAG(double,
           hls_can_skip_until,
-          6.0,
+          0.0,
           "Indicates when the client can skip loading available segments "
           "and start loading closer to the live edge (in seconds).");      

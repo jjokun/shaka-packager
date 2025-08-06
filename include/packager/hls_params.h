@@ -81,8 +81,8 @@ struct HlsParams {
   // Server control parameters
   bool enable_server_control = false;
   bool server_can_block_reload = false;
-  double part_hold_back = 0.5;
-  double can_skip_until = 6.0;
+  double part_hold_back = 1.5;
+  double can_skip_until = 0.0;
 };
 
 }  // namespace shaka
