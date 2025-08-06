@@ -563,15 +563,9 @@ std::optional<PackagingParams> GetPackagingParams() {
     }
 
     hls_params.enable_server_control = absl::GetFlag(FLAGS_enable_server_control);
-    if (hls_params.enable_server_control) {
-      hls_params.server_can_block_reload = absl::GetFlag(FLAGS_hls_server_can_block_reload);
-      hls_params.part_hold_back = absl::GetFlag(FLAGS_hls_part_hold_back);
-      hls_params.can_skip_until = absl::GetFlag(FLAGS_hls_can_skip_until);
-    } else {
-      hls_params.server_can_block_reload = false;
-      hls_params.part_hold_back = 0;
-      hls_params.can_skip_until = 0;
-    }
+    hls_params.server_can_block_reload = absl::GetFlag(FLAGS_hls_server_can_block_reload);
+    hls_params.part_hold_back = absl::GetFlag(FLAGS_hls_part_hold_back);
+    hls_params.can_skip_until = absl::GetFlag(FLAGS_hls_can_skip_until);
     
     hls_params.enable_preload_hints = absl::GetFlag(FLAGS_hls_preload_hints);
   }
