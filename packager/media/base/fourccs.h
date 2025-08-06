@@ -86,6 +86,7 @@ enum FourCC : uint32_t {
   FOURCC_hvc1 = 0x68766331,
   FOURCC_hvcC = 0x68766343,
   FOURCC_hvcE = 0x68766345,
+  FOURCC_hlsf = 0x686C7366,
   FOURCC_lhvC = 0x6C687643,
   FOURCC_vexu = 0x76657875,
   FOURCC_hfov = 0x68666f76,

@@ -133,15 +133,15 @@ void GenerateSinf(FourCC old_type,
     case FOURCC_cbc1:
       DCHECK_EQ(track_encryption.default_crypt_byte_block, 0u);
       DCHECK_EQ(track_encryption.default_skip_byte_block, 0u);
-      // CENCv3 10.1 ??˜cenc??? AES-CTR scheme and 10.2 ??˜cbc1??? AES-CBC scheme:
-      // The version of the Track Encryption Box (??˜tenc???) SHALL be 0.
+      // CENCv3 10.1 ??ï¿½cenc??? AES-CTR scheme and 10.2 ??ï¿½cbc1??? AES-CBC scheme:
+      // The version of the Track Encryption Box (??ï¿½tenc???) SHALL be 0.
       track_encryption.version = 0;
       break;
     case FOURCC_cbcs:
     case FOURCC_cens:
-      // CENCv3 10.3 ??˜cens??? AES-CTR subsample pattern encryption scheme and
-      //        10.4 ??˜cbcs??? AES-CBC subsample pattern encryption scheme:
-      // The version of the Track Encryption Box (??˜tenc???) SHALL be 1.
+      // CENCv3 10.3 ??ï¿½cens??? AES-CTR subsample pattern encryption scheme and
+      //        10.4 ??ï¿½cbcs??? AES-CBC subsample pattern encryption scheme:
+      // The version of the Track Encryption Box (??ï¿½tenc???) SHALL be 1.
       track_encryption.version = 1;
       break;
     default:
@@ -261,8 +261,13 @@ Status MP4Muxer::DelayInitializeMuxer() {
     // CMAF allows only one track/stream per file.
     // CMAF requires single initialization switching for AVC3/HEV1, which is not
     // supported yet.
-    if (codec_fourcc != FOURCC_avc3 && codec_fourcc != FOURCC_hev1)
-      ftyp->compatible_brands.push_back(FOURCC_cmfc);
+    if (codec_fourcc != FOURCC_avc3 && codec_fourcc != FOURCC_hev1) {
+      if (options().hls_params.low_latency_hls_mode)
+        ftyp->compatible_brands.push_back(FOURCC_hlsf);
+      else
+        ftyp->compatible_brands.push_back(FOURCC_cmfc);
+    }
+      
 
     if (streams()[0]->stream_type() == kStreamAudio) {
       codec_fourcc =

@@ -312,8 +312,7 @@ uint64_t PartialSegmentSegmenter::GetChunkDuration() {
   return sidx()->references.back().subsegment_duration;
 }
 
-void PartialSegmentSegmenter::ResetPartialState() {
-  is_initial_chunk_in_seg_ = true;
+void PartialSegmentSegmenter::ResetPartialState() {  
   is_initial_partial_in_seg_ = true;
   total_buffered_duration_ = 0;
   total_partial_size_ = 0;
@@ -322,6 +321,7 @@ void PartialSegmentSegmenter::ResetPartialState() {
 
 void PartialSegmentSegmenter::ResetSegmentState() {
   ResetPartialState();
+  is_initial_chunk_in_seg_ = true;
   num_partials_in_seg_ = 1;
   total_segment_size_ = 0;
   buffered_chunks_.clear();
