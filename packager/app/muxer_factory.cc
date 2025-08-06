@@ -20,10 +20,11 @@ namespace media {
 
 MuxerFactory::MuxerFactory(const PackagingParams& packaging_params)
     : mp4_params_(packaging_params.mp4_output_params),
+      hls_params_(packaging_params.hls_params),
       temp_dir_(packaging_params.temp_dir),
       transport_stream_timestamp_offset_ms_(
-          packaging_params.transport_stream_timestamp_offset_ms),
-      hls_params_(packaging_params.hls_params) {}
+          packaging_params.transport_stream_timestamp_offset_ms)
+       {}
 
 std::shared_ptr<Muxer> MuxerFactory::CreateMuxer(
     MediaContainerName output_format,

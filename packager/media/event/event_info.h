@@ -41,7 +41,6 @@ enum class EventInfoType {
   kSegment,
   kKeyFrame,
   kCue,
-  kScte35Event,
 };
 
 // This stores data for lazy event callback for VOD.

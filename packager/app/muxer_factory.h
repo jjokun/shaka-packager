@@ -51,7 +51,7 @@ class MuxerFactory {
   const Mp4OutputParams mp4_params_;
   const HlsParams hls_params_;
   const std::string temp_dir_;
-  int32_t transport_stream_timestamp_offset_ms_ = 0;
+  int32_t transport_stream_timestamp_offset_ms_;
   std::shared_ptr<Clock> clock_ = nullptr;
 };
 

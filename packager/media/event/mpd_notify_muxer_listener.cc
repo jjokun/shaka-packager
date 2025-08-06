@@ -250,7 +250,7 @@ void MpdNotifyMuxerListener::OnCueEvent(int64_t timestamp,
   } else {
     EventInfo event_info;
     event_info.type = EventInfoType::kCue;
-    event_info.cue_event_info = {timestamp};
+    event_info.cue_event_info = {timestamp, break_duration, out_of_network};
     event_info_.push_back(event_info);
   }
 }

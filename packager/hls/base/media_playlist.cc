@@ -185,7 +185,7 @@ std::string CreatePlaylistHeader(
   // 6 is required for EXT-X-MAP without EXT-X-I-FRAMES-ONLY.
   std::string header = absl::StrFormat(
       "#EXTM3U\n"
-      "#EXT-X-VERSION:6\n"
+      "#EXT-X-VERSION:7\n"
       "%s"
       "#EXT-X-TARGETDURATION:%d\n",
       version_line.c_str(), target_duration);
