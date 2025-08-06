@@ -81,9 +81,9 @@ namespace shaka {
 namespace media {
 
 Demuxer::Demuxer(const std::string& file_name, std::shared_ptr<MediaHandler> cue_alignment_handler)
-    : file_name_(file_name),
-      cue_alignment_handler_(cue_alignment_handler),
-      buffer_(new uint8_t[kBufSize]) {
+    : file_name_(file_name),      
+      buffer_(new uint8_t[kBufSize]), 
+      cue_alignment_handler_(cue_alignment_handler) {
 }
 
 Demuxer::~Demuxer() {
