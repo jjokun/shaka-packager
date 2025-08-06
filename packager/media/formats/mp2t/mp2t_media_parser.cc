@@ -164,9 +164,9 @@ Mp2tMediaParser::Mp2tMediaParser()
 }
 
 Mp2tMediaParser::Mp2tMediaParser(std::shared_ptr<MediaHandler> cue_alignment_handler)
-    : sbr_in_mimetype_(false),
-      is_initialized_(false),
-      cue_alignment_handler_(cue_alignment_handler) {
+    : cue_alignment_handler_(cue_alignment_handler),
+      sbr_in_mimetype_(false),
+      is_initialized_(false) {
   DCHECK(cue_alignment_handler_ != nullptr);
 }
 
@@ -351,7 +351,7 @@ void Mp2tMediaParser::RegisterPes(int pmt_pid,
       pid_type = PidState::kPidTextPes;
       break;
     case TsStreamType::kScte35: 
-      // SCTE-35Àº PSI(¼½¼Ç) ÆÄ¼­·Î µî·Ï
+      // SCTE-35ï¿½ï¿½ PSI(ï¿½ï¿½ï¿½ï¿½) ï¿½Ä¼ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½
       section_parser = std::make_unique<Scte35SectionParser>(on_cue_info);
       pid_type = PidState::kPidScte35Pes;
       break;
