@@ -24,7 +24,8 @@ const char kPackagerVersion[] = "";
 #endif  // #if defined(PACKAGER_VERSION)
 
 const char kPackagerGithubUrl[] =
-    "https://github.com/shaka-project/shaka-packager";
+    // "https://github.com/shaka-project/shaka-packager";
+    "Samsung Electronics Co., Ltd. (https://www.samsung.com/)";
 
 class Version {
  public:
