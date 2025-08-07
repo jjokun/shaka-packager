@@ -148,6 +148,10 @@ Status PartialSegmentSegmenter::WriteInitialChunk(int64_t segment_number) {
   // Write the styp header to the beginning of the segment.
   styp_->Write(chunk.buffer.get());
 
+  std::unique_ptr<BufferWriter> styp(new BufferWriter());
+  styp_->Write(styp.get());
+  RETURN_IF_ERROR(styp->WriteToFile(partial_file_.get()));
+
   const size_t segment_header_size = chunk.buffer->Size();
   segment_size_ = segment_header_size + fragment_buffer()->Size();
   DCHECK_NE(segment_size_, 0u);
@@ -167,21 +171,18 @@ Status PartialSegmentSegmenter::WriteInitialChunk(int64_t segment_number) {
 
   total_buffered_duration_ += static_cast<double>(chunk.duration) / 
                              static_cast<double>(GetReferenceTimeScale());
-
-  std::unique_ptr<BufferWriter> buffer(new BufferWriter());
-  buffer->AppendBuffer(*chunk.buffer);
-  RETURN_IF_ERROR(buffer->WriteToFile(partial_file_.get()));
   buffered_chunks_.push_back(std::move(chunk));
+
+  RETURN_IF_ERROR(fragment_buffer()->WriteToFile(partial_file_.get()));
 
   // Update progress
   UpdateProgress(total_buffered_duration_);
 
   if (total_buffered_duration_ >= options().hls_params.partial_segment_duration) {
-    FinalizePartialSegment();
+    RETURN_IF_ERROR(FinalizePartialSegment());
   }
 
-  is_initial_chunk_in_seg_ = false;
-  fragment_buffer()->Clear();
+  is_initial_chunk_in_seg_ = false;  
   
   return Status::OK;
 }
@@ -215,7 +216,7 @@ Status PartialSegmentSegmenter::WriteChunk() {
 
   // Create partial segment when duration threshold is reached
   if (total_buffered_duration_ >= options().hls_params.partial_segment_duration) {
-    FinalizePartialSegment();
+    RETURN_IF_ERROR(FinalizePartialSegment());
   }
 
   return Status::OK;
@@ -237,8 +238,7 @@ Status PartialSegmentSegmenter::FinalizePartialSegment() {
                                           is_independent_);
   }
 
-  // Reset buffer state
-  key_frame_infos_clear();
+  // Reset partial state
   ResetPartialState();
   num_partials_in_seg_++;
 
